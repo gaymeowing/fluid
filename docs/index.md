@@ -5,14 +5,14 @@ layout: home
 hero:
   name: "Liquid"
   text: "Declarative UI framework for Roblox"
-  tagline: My great project tagline
+
   actions:
     - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
+      text: Get Started
+      link: /guide/what-is-vitepress
     - theme: alt
-      text: API Examples
-      link: /api-examples
+      text: View on GitHub
+      link: https://github.com/ffrostfall/liquid
 
 features:
   - title: Feature A

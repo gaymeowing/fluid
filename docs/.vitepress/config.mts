@@ -1,31 +1,22 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig } from "vitepress";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Liquid",
-  description: "Declarative UI framework for Roblox",
-  
-  base: "/liquid/",
-  
-  themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
-    nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Examples', link: '/markdown-examples' }
-    ],
+	title: "Liquid",
+	description: "Declarative UI framework for Roblox",
 
-    sidebar: [
-      {
-        text: 'Examples',
-        items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
-        ]
-      }
-    ],
+	base: "/liquid/",
 
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
-    ]
-  }
-})
+	themeConfig: {
+		// https://vitepress.dev/reference/default-theme-config
+		nav: [
+			{ text: "Home", link: "/" },
+		],
+
+		sidebar: [],
+
+		socialLinks: [
+			{ icon: "github", link: "https://github.com/ffrostfall/liquid" },
+		],
+	},
+});
