@@ -19,6 +19,9 @@ jobs:
       - name: Setup Rokit
         uses: CompeyDev/setup-rokit@v0.1.0
 
+      - name: Log into Wally
+        run: wally login --token "${{ secrets.WALLY_SECRET }}"
+
       - name: Upload to Wally
         run: wally publish
 
