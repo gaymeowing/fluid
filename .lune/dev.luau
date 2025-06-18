@@ -15,5 +15,9 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	process.exec("rojo", { "serve", "roblox-tests.project.json" }, { stdio = "forward" })
+	process.exec(
+		"rojo",
+		{ "serve", "roblox-tests.project.json" },
+		{ stdio = "forward" }
+	)
 end)
