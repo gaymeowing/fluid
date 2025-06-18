@@ -1,6 +1,6 @@
 [package]
 name = "ffrostfall/liquid"
-version = "0.0.0-C"
+version = "0.0.0-D"
 registry = "https://github.com/UpliftGames/wally-index"
 license = "MIT"
 
