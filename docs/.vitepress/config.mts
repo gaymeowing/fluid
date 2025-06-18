@@ -5,6 +5,8 @@ export default defineConfig({
   title: "Liquid",
   description: "Declarative UI framework for Roblox",
   
+  base: "/liquid/",
+  
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
