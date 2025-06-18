@@ -16,6 +16,9 @@ jobs:
         with:
           repository: ffrostfall/liquid
 
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.0
+
       - name: Upload to Wally
         run: wally publish
 
