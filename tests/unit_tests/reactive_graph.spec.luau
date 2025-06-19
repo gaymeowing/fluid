@@ -1,10 +1,5 @@
 local TEST, CASE, CHECK, FINISH = require("@vendor/testkit").test()
-local cleanup = require("@src/reactive/cleanup")
-local derive = require("@src/reactive/derive")
-local effect = require("@src/reactive/effect")
-local root = require("@src/reactive/root")
-local source = require("@src/reactive/source")
-local untrack = require("@src/reactive/untrack")
+local fluid = require("@src/")
 
 local WEAK_TABLE = { __mode = "kv" }
 
@@ -13,7 +8,7 @@ local WEAK_TABLE = { __mode = "kv" }
 ]=]
 local function wrap_root(fn: () -> ())
 	return function()
-		local destroy = root(function()
+		local destroy = fluid.root(function()
 			fn()
 		end)
 		destroy()
@@ -38,8 +33,8 @@ TEST("root", function()
 	do
 		CASE("cleanup functions execute on source deletion")
 
-		root(function(destroy)
-			cleanup(function()
+		fluid.root(function(destroy)
+			fluid.cleanup(function()
 				count += 1
 			end)
 
@@ -55,23 +50,23 @@ TEST(
 	wrap_root(function()
 		do
 			CASE("create source")
-			local src = source(1)
+			local src = fluid.source(1)
 			CHECK(src() == 1)
 		end
 
 		do
 			CASE("set and get source value")
-			local src = source(1)
+			local src = fluid.source(1)
 			src(2)
 			CHECK(src() == 2)
 		end
 
 		do
 			CASE("does not update if same value")
-			local src = source(1)
+			local src = fluid.source(1)
 
 			local count = 0
-			effect(function()
+			fluid.effect(function()
 				src()
 				count += 1
 			end)
@@ -85,10 +80,10 @@ TEST(
 
 		do
 			CASE("does update if same value is mutable table")
-			local src = source({})
+			local src = fluid.source({})
 
 			local count = 0
-			effect(function()
+			fluid.effect(function()
 				src()
 				count += 1
 			end)
@@ -103,10 +98,10 @@ TEST(
 			local a = table.freeze({})
 			local b = table.freeze({})
 
-			local src = source(a)
+			local src = fluid.source(a)
 
 			local count = 0
-			effect(function()
+			fluid.effect(function()
 				src()
 				count += 1
 			end)
@@ -127,10 +122,10 @@ TEST(
 	wrap_root(function()
 		do
 			CASE("derive new value on source change")
-			local a = source(1)
-			local b = source(2)
+			local a = fluid.source(1)
+			local b = fluid.source(2)
 
-			local c = derive(function()
+			local c = fluid.derive(function()
 				return tostring(a() + b())
 			end)
 
@@ -141,13 +136,13 @@ TEST(
 
 		do
 			CASE("derive wrapped source")
-			local a = source(1)
+			local a = fluid.source(1)
 
 			local b = function()
 				return tostring(a())
 			end
 
-			local c = derive(function()
+			local c = fluid.derive(function()
 				return tonumber(b())
 			end)
 
@@ -158,15 +153,15 @@ TEST(
 
 		do
 			CASE("does not update if same value")
-			local num = source(0)
+			local num = fluid.source(0)
 
-			local is_even = derive(function()
+			local is_even = fluid.derive(function()
 				return bit32.band(num(), 0b01) == 0
 			end)
 
 			local count = 0
 
-			effect(function()
+			fluid.effect(function()
 				is_even()
 				count += 1
 			end)
@@ -183,16 +178,16 @@ TEST(
 
 		do
 			CASE("conditional derive")
-			local a = source(false)
-			local b = source(false)
+			local a = fluid.source(false)
+			local b = fluid.source(false)
 
-			local c = derive(function()
+			local c = fluid.derive(function()
 				return if a() then "a" elseif b() then "b" else "never"
 			end)
 
 			local count = 0
 
-			effect(function()
+			fluid.effect(function()
 				c()
 				count += 1
 			end)
@@ -215,12 +210,12 @@ TEST(
 		do
 			CASE("owner not disconnected")
 			local count = 0
-			local a = source(0)
+			local a = fluid.source(0)
 			local _b
 
-			local destroy = root(function()
-				_b = derive(function()
-					cleanup(function()
+			local destroy = fluid.root(function()
+				_b = fluid.derive(function()
+					fluid.cleanup(function()
 						count += 1
 					end)
 
@@ -239,20 +234,20 @@ TEST(
 
 		do
 			CASE("behavior of effect within an effect")
-			local num = source(1)
+			local num = fluid.source(1)
 
 			local ran = table.create(100, 0)
 			local cleaned = table.create(100, 0)
 
-			local destroy = root(function()
-				local owner = derive(function()
+			local destroy = fluid.root(function()
+				local owner = fluid.derive(function()
 					local i = num()
 
-					return untrack(function()
-						return derive(function()
+					return fluid.untrack(function()
+						return fluid.derive(function()
 							ran[i] += 1
 
-							cleanup(function()
+							fluid.cleanup(function()
 								cleaned[i] += 1
 							end)
 
@@ -284,9 +279,9 @@ TEST(
 		do
 			CASE("garbage collection")
 			-- check that `b` does not allow gc of `a`
-			local a = source(1)
+			local a = fluid.source(1)
 
-			local _b = derive(function()
+			local _b = fluid.derive(function()
 				return a()
 			end)
 
@@ -305,11 +300,11 @@ TEST(
 	wrap_root(function()
 		do
 			CASE("rerun on source change")
-			local a = source(1)
-			local b = source(1)
+			local a = fluid.source(1)
+			local b = fluid.source(1)
 
 			local count = 0
-			effect(function()
+			fluid.effect(function()
 				a()
 				b()
 				count += 1
@@ -324,14 +319,14 @@ TEST(
 
 		do
 			CASE("rerun on derived source change")
-			local num = source(0)
+			local num = fluid.source(0)
 
-			local text = derive(function()
+			local text = fluid.derive(function()
 				return tostring(num())
 			end)
 
 			local count = 0
-			effect(function()
+			fluid.effect(function()
 				text()
 				count += 1
 			end)
@@ -343,11 +338,11 @@ TEST(
 
 		do
 			CASE("cache")
-			local num = source(0)
+			local num = fluid.source(0)
 
 			local count: number
 
-			effect(function(x: number)
+			fluid.effect(function(x: number)
 				num()
 				count = x + 1
 				return x + 1
