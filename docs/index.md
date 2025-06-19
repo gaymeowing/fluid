@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "Liquid"
+  name: "fluid"
   text: "Declarative UI framework for Roblox"
 
   actions:
@@ -12,7 +12,7 @@ hero:
       link: /guide/what-is-vitepress
     - theme: alt
       text: View on GitHub
-      link: https://github.com/ffrostfall/liquid
+      link: https://github.com/ffrostfall/fluid
 
 features:
   - title: Feature A
@@ -22,4 +22,3 @@ features:
   - title: Feature C
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
-
