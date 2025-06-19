@@ -27,5 +27,5 @@ jobs:
       - name: Setup Rokit
         uses: CompeyDev/setup-rokit@v0.1.0
 
-      - name: Push
+      - name: Run styling
         run: lune run styling
