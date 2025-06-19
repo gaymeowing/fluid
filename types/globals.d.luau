@@ -1,3 +1,3 @@
 declare _G: {
-	__DEV__: boolean
+	__DEV__: boolean?
 }

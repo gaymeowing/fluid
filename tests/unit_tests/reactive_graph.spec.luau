@@ -1,4 +1,4 @@
-local TEST, CASE, CHECK, FINISH = require("@vendor/testkit").test()
+local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 
 local WEAK_TABLE = { __mode = "kv" }
@@ -354,10 +354,5 @@ TEST(
 		end
 	end)
 )
-
-local ok = FINISH()
-if not ok then
-	error("Tests failed", 0)
-end
 
 return nil

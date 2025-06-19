@@ -1,0 +1,21 @@
+{
+	"name": "liquid-tests",
+
+	"emitLegacyScripts": false,
+
+	"tree": {
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+
+			"client": {
+				"$path": "tests/roblox_tests/client"
+			},
+
+			"fluid": {
+				"$path": "src"
+			}
+		}
+	}
+}
