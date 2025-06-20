@@ -8,6 +8,8 @@ local create = require("@self/instances/create")
 local derive = require("@self/reactive/derive")
 local effect = require("@self/reactive/effect")
 local graph = require("@self/reactive/graph")
+local interval = require("@self/utils/interval")
+local mount = require("@self/instances/mount")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
 local source = require("@self/reactive/source")
@@ -34,6 +36,7 @@ end
 local fluid = {}
 
 fluid.create = create
+fluid.mount = mount
 
 -- Reactive graph
 fluid.cleanup = cleanup
@@ -43,6 +46,7 @@ fluid.graph = graph
 fluid.root = root
 fluid.source = source
 fluid.untrack = untrack
+fluid.interval = interval
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 

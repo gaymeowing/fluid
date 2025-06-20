@@ -225,8 +225,8 @@ TEST(
 			end)
 
 			CHECK(count == 0)
-			a(1) -- b clears parents (should not clear owner)
-			_b()
+			a(1); -- b clears parents (should not clear owner)
+			(_b :: any)()
 			CHECK(count == 1)
 			destroy()
 			CHECK(count == 2)

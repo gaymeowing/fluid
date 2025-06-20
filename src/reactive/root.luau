@@ -23,7 +23,7 @@ local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup,
 		results = { fn(destroy) }
 	end, destroy)
 
-	if not result.ok then
+	if not result.success then
 		destroy()
 		error(`error while running root():\n\n{result}`, 0)
 	end

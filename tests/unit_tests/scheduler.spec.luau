@@ -3,15 +3,27 @@ local fluid = require("@src/")
 local signal = require("@vendor/signal")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
-local step_by: signal.Identity<number> = signal()
+local render_event: signal.Identity<number> = signal()
 
 scheduler.provide(function(render)
 	while true do
-		render(step_by:wait())
+		render(render_event:wait())
 	end
 
 	return error("unreachable")
 end)
+
+--[=[
+	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
+]=]
+local function wrap_root(fn: () -> ())
+	return function()
+		local destroy = fluid.root(function()
+			fn()
+		end)
+		destroy()
+	end
+end
 
 TEST("scheduler stepping", function()
 	CASE("1 second delta time")
@@ -24,9 +36,31 @@ TEST("scheduler stepping", function()
 		end)
 
 		CHECK(counted_seconds == 0)
-		step_by:fire(1)
+		render_event:fire(1)
 		CHECK(counted_seconds == 1)
 	end
 end)
+
+TEST(
+	"bind_frame",
+	wrap_root(function()
+		CASE("polls each render")
+		do
+			table.clear(scheduler.connections)
+			local counted_seconds = 0
+
+			scheduler.on_render(function(delta_time)
+				counted_seconds += delta_time
+			end)
+
+			local value = fluid.interval(function()
+				return counted_seconds
+			end)
+
+			render_event:fire(1)
+			CHECK(value() == 1)
+		end
+	end)
+)
 
 return nil

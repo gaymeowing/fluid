@@ -11,7 +11,7 @@ local function derive<T>(source: types.Effect<T>): types.Readable<T>
 	local function evaluate()
 		local result = graph.evaluate_node(node)
 
-		return if result.ok then result.value else error(result, 0)
+		return if result.success then result.value else error(result, 0)
 	end
 
 	return evaluate

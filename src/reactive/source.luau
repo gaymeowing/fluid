@@ -29,4 +29,4 @@ local function source<T>(initial_value: T): types.Source<T>
 	end :: types.Source<T>
 end
 
-return source
+return source :: (<T>(value: T) -> types.Source<T>) & (<T>() -> types.Source<T>)
