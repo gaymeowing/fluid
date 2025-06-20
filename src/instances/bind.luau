@@ -66,7 +66,7 @@ local function bind(props, inst: Instance)
 
 	-- handle children
 	for key, value in ipairs(props) do
-		if type(value) ~= "userdata" then
+		if typeof(value) ~= "Instance" then
 			continue
 		end
 
