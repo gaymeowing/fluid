@@ -51,16 +51,17 @@ local function bind(props, inst: Instance)
 		if type(value) == "function" then
 			if
 				typeof((inst :: any)[property] :: unknown)
-				== "RBXScriptConnection"
+				== "RBXScriptSignal"
 			then
+				bind_event(inst, property, value)
 				continue
 			end
 
 			bind_property(inst, property, value)
 			continue
+		else
+			set_property(inst, property, value)
 		end
-
-		set_property(inst, property, value)
 	end
 
 	-- handle children

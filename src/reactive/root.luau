@@ -26,7 +26,7 @@ local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup,
 
 	if not result.success then
 		destroy()
-		error(`error while running root():\n\n{result}`, 0)
+		error(result)
 	end
 
 	-- luau type issue w generic type packs

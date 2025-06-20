@@ -12,8 +12,12 @@ local function iso_date()
 	return fluid.create("ScreenGui")({
 		Name = "iso",
 
-		fluid.create("TextLabel")({
+		fluid.create("TextButton")({
 			Text = text,
+
+			Activated = function()
+				print("button pressed!")
+			end,
 
 			Size = fluid.async(function(set)
 				set(UDim2.fromScale(0.5, 0.5))
