@@ -20,7 +20,6 @@ local function iso_date()
 			end,
 
 			Size = fluid.async(function(set)
-				set(UDim2.fromScale(0.5, 0.5))
 				local text_value = text()
 
 				local params = Instance.new("GetTextBoundsParams")

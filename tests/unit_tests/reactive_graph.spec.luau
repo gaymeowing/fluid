@@ -1,6 +1,7 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local graph = require("../../src/reactive/graph")
+local task = require("@lune/task")
 
 local WEAK_TABLE = { __mode = "kv" }
 
@@ -226,8 +227,8 @@ TEST(
 			end)
 
 			CHECK(count == 0)
-			a(1); -- b clears parents (should not clear owner)
-			(_b :: any)()
+			a(1) -- b clears parents (should not clear owner)
+			local _ = (_b :: any)()
 			CHECK(count == 1)
 			destroy()
 			CHECK(count == 2)
@@ -264,7 +265,6 @@ TEST(
 				CHECK(cleaned[1] == 1)
 				local child2 = owner()
 
-				print("child1", child1())
 				CHECK(child1() == 1)
 				CHECK(child2() == 2)
 			end)
@@ -464,6 +464,29 @@ TEST(
 
 			coroutine.resume(thread)
 			CHECK(count == 4)
+		end
+
+		do
+			CASE("yield bug #1")
+			local text = fluid.source("h")
+
+			local value = fluid.async(function(set)
+				task.wait(0.1)
+
+				return #text()
+			end)
+
+			local size_value = 0
+			fluid.effect(function()
+				size_value = value()
+			end)
+
+			text("hi")
+			task.wait(0.3)
+			CHECK(size_value == 2)
+			text("what")
+			task.wait(0.3)
+			CHECK(size_value == 4)
 		end
 	end)
 )
