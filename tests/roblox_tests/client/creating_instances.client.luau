@@ -1,18 +1,33 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
 
 local fluid = require(ReplicatedStorage.fluid)
 
 local function iso_date()
+	local text = fluid.interval(function()
+		return string.rep("W", math.random(1, 20))
+	end)
+
 	return fluid.create("ScreenGui")({
 		Name = "iso",
 
 		fluid.create("TextLabel")({
-			Text = fluid.interval(function()
-				return DateTime.now():ToIsoDate()
-			end),
+			Text = text,
 
-			Size = UDim2.fromScale(0.25, 0.25),
+			Size = fluid.async(function(set)
+				set(UDim2.fromScale(0.5, 0.5))
+				local text_value = text()
+
+				local params = Instance.new("GetTextBoundsParams")
+				params.Text = text_value
+
+				local bounds = TextService:GetTextBoundsAsync(params)
+
+				print("evaluating")
+
+				return UDim2.fromOffset(bounds.X, bounds.Y)
+			end),
 			Position = UDim2.fromScale(0.5, 0.5),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 		}),
