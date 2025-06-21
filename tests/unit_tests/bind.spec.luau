@@ -1,6 +1,7 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local bind = require("@src/instances/bind")
 local fluid = require("@src/")
+local graph = require("@src/reactive/graph")
 local task = require("@lune/task")
 
 --[=[
@@ -33,10 +34,15 @@ TEST(
 
 		task.wait(0.05)
 
+		graph.flush_deferred_nodes()
 		CHECK(mock_inst.derivedvalue == 2)
 
 		text("one")
+		graph.flush_deferred_nodes()
+
 		task.wait(0.05)
+
+		graph.flush_deferred_nodes()
 		CHECK(mock_inst.derivedvalue == 3)
 	end)
 )
