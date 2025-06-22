@@ -25,12 +25,12 @@ TEST(
 			derivedvalue = 0,
 		}
 
-		bind({
+		bind(mock_inst :: any, {
 			derivedvalue = fluid.async(function(set)
 				task.wait(0.02)
 				return #text()
 			end),
-		}, mock_inst :: any)
+		})
 
 		task.wait(0.05)
 
