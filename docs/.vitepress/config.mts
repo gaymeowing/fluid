@@ -9,9 +9,21 @@ export default defineConfig({
 
 	themeConfig: {
 		// https://vitepress.dev/reference/default-theme-config
-		nav: [{ text: "Home", link: "/" }],
+		nav: [
+			{ text: "Home", link: "/" },
+			{ text: "Start", link: "/guides/getting-started" },
+		],
 
-		sidebar: [],
+		sidebar: [
+			{
+				text: "Getting Started",
+				items: [{ text: "Installation", link: "/guides/getting-started" }],
+			},
+		],
+
+		search: {
+			provider: "local",
+		},
 
 		socialLinks: [
 			{ icon: "github", link: "https://github.com/ffrostfall/fluid" },
