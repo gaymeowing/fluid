@@ -3,11 +3,13 @@ if _G.__DEV__ == nil then
 	_G.__DEV__ = (game and not game:GetService("RunService"):IsStudio()) :: any
 end
 
+local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local derive = require("@self/reactive/derive")
 local effect = require("@self/reactive/effect")
+local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
 local interval = require("@self/utils/interval")
 local mount = require("@self/instances/mount")
@@ -38,6 +40,11 @@ local fluid = {}
 
 fluid.create = create
 fluid.mount = mount
+fluid.for_values = for_values
+
+-- actions
+fluid.action = action.create
+fluid.is_action = action.is_action
 
 -- Reactive graph
 fluid.cleanup = cleanup
