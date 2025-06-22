@@ -1,7 +1,7 @@
 -- exists so we
 local action_metatable_symbol = table.freeze({})
 
-export type Indentity = setmetatable<{
+export type Identity = setmetatable<{
 	callback: (inst: Instance) -> (),
 	priority: number,
 }, typeof(action_metatable_symbol)>
@@ -17,7 +17,7 @@ end
 function action.create(
 	callback: (inst: Instance) -> (),
 	priority: number?
-): Indentity
+): Identity
 	return setmetatable({
 		callback = callback,
 		priority = priority or 1,
