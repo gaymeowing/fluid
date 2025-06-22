@@ -1,4 +1,4 @@
-type function CastIntoValue(value: type): type
+type function CastIntoValue(value: type)
 	local function get_return_for_fn(t: type)
 		local values = t:returns()
 		local head = values.head
@@ -10,7 +10,7 @@ type function CastIntoValue(value: type): type
 		elseif tail then
 			return tail
 		else
-			return (types.singleton(nil))
+			return types.singleton(nil)
 		end
 	end
 
@@ -26,7 +26,7 @@ type function CastIntoValue(value: type): type
 			end
 		end
 
-		return (types.unionof(unpack(possible_outcomes)))
+		return types.unionof(unpack(possible_outcomes))
 	elseif value.tag == "function" then
 		return get_return_for_fn(value)
 	else
