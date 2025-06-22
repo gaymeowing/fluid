@@ -1,8 +1,54 @@
+local action = require("./action")
 local graph = require("../reactive/graph")
 local types = require("../reactive/types")
 
-local function set_property(inst: Instance, prop_name: string, value: any)
-	(inst :: any)[prop_name] = value
+type PropertyPair<T> = {
+	tag: "property",
+	name: string,
+	value: T,
+}
+
+type ReactivePropertyPair<T> = {
+	tag: "reactive_property",
+	name: string,
+	value: () -> T,
+}
+
+type EventPair<T...> = {
+	tag: "event",
+	name: string,
+	event: (T...) -> (),
+}
+
+type ActionPair = {
+	tag: "action",
+	action: action.Identity,
+}
+
+type ChildPair = {
+	tag: "child",
+	value: Instance,
+}
+
+type ReactiveChildPair = {
+	tag: "reactive_child",
+	value: () -> Instance | { Instance },
+}
+
+type Pair =
+	| ReactivePropertyPair<unknown>
+	| PropertyPair<unknown>
+	| EventPair<unknown>
+	| ReactiveChildPair
+	| ActionPair
+	| ChildPair
+
+local function set_property(inst: Instance, property: string, value: any)
+	(inst :: any)[property] = value
+end
+
+local function get_property(inst: Instance, property: string): any
+	return (inst :: any)[property]
 end
 
 local function bind_property<T>(
@@ -10,8 +56,6 @@ local function bind_property<T>(
 	property: string,
 	value: types.Readable<T>
 )
-	local first_value = value()
-
 	local property_node = graph.create_reactive_node(
 		graph.assert_stable_parent(),
 		function()
@@ -19,10 +63,8 @@ local function bind_property<T>(
 			return nil
 		end,
 		"deferred",
-		first_value
+		nil
 	)
-
-	set_property(inst, property, first_value)
 
 	graph.evaluate_node(property_node)
 end
@@ -40,37 +82,155 @@ local function bind_event(
 	end)
 end
 
-local function bind(props, inst: Instance)
-	-- handle property sets
-	for property: number | string, value in props do
-		-- we use mixed tables
-		if type(property) == "number" then
-			continue
-		end
+local function bind_reactive_child(
+	inst: Instance,
+	func: () -> { Instance } | Instance
+)
+	local property_node = graph.create_reactive_node(
+		graph.assert_stable_parent(),
+		function(value: { [Instance]: true })
+			local source_result = func()
 
-		if type(value) == "function" then
-			if
-				typeof((inst :: any)[property] :: unknown)
-				== "RBXScriptSignal"
-			then
-				bind_event(inst, property, value)
-				continue
+			if typeof(source_result) == "Instance" then
+				if value[source_result] then
+					return value
+				end
+
+				source_result.Parent = inst
+				value[source_result] = true
+				return value
 			end
 
-			bind_property(inst, property, value)
-			continue
-		else
-			set_property(inst, property, value)
+			for _, source_inst in source_result do
+				if value[source_inst] then
+					continue
+				end
+
+				value[source_inst] = true
+				source_inst.Parent = inst
+			end
+
+			for old_inst in value do
+				if not table.find(source_result, old_inst) then
+					old_inst:Destroy()
+					value[old_inst] = nil
+				end
+			end
+
+			return value
+		end,
+		"deferred",
+		{}
+	)
+
+	graph.evaluate_node(property_node)
+end
+
+local function evaluate(
+	inst: Instance,
+	props: { [unknown]: unknown },
+	existing_array: { Pair }?
+): { Pair }
+	local resulting_array: { Pair } = existing_array or {}
+
+	for key, value in props do
+		local value_is_action = action.is_action(value :: any)
+
+		if
+			type(key) == "number"
+			and type(value) == "table"
+			and value_is_action
+		then
+			table.insert(resulting_array, {
+				tag = "action",
+				action = value,
+			})
+		elseif
+			type(key) == "number"
+			and type(value) == "table"
+			and not value_is_action
+		then
+			evaluate(inst, value :: any, resulting_array)
+		elseif type(key) == "number" and type(value) == "function" then
+			table.insert(resulting_array, {
+				tag = "reactive_child",
+				value = value,
+			})
+		elseif
+			type(key) == "string"
+			and typeof(get_property(inst, key)) == "RBXScriptSignal"
+		then
+			table.insert(resulting_array, {
+				tag = "event",
+				name = key,
+				event = value,
+			})
+		elseif
+			type(key) == "string"
+			and typeof(get_property(inst, key)) ~= "RBXScriptSignal"
+			and type(value) == "function"
+		then
+			table.insert(resulting_array, {
+				tag = "reactive_property",
+				name = key,
+				value = value,
+			})
+		elseif
+			type(key) == "string"
+			and typeof(get_property(inst, key)) ~= "RBXScriptSignal"
+			and type(value) ~= "function"
+		then
+			table.insert(resulting_array, {
+				tag = "property",
+				name = key,
+				value = value,
+			})
+		elseif typeof(value) == "Instance" then
+			table.insert(resulting_array, {
+				tag = "child",
+				value = value,
+			})
 		end
 	end
 
-	-- handle children
-	for key, value in ipairs(props) do
-		if typeof(value) ~= "Instance" then
+	return resulting_array
+end
+
+local function bind(inst: Instance, props: { [unknown]: unknown })
+	local pairings = evaluate(inst, props)
+	local parent: (ReactivePropertyPair<Instance> | PropertyPair<Instance>)? =
+		nil
+
+	for _, pairing in pairings do
+		if
+			(pairing.tag == "property" or pairing.tag == "reactive_property")
+			and pairing.name == "Parent"
+		then
+			parent = pairing :: any
 			continue
 		end
 
-		value.Parent = inst
+		if pairing.tag == "property" then
+			set_property(inst, pairing.name, pairing.value)
+		elseif pairing.tag == "reactive_property" then
+			bind_property(inst, pairing.name, pairing.value)
+		elseif pairing.tag == "event" then
+			bind_event(inst, pairing.name, pairing.event)
+		elseif pairing.tag == "child" then
+			pairing.value.Parent = inst
+		elseif pairing.tag == "reactive_child" then
+			bind_reactive_child(inst, pairing.value)
+		elseif pairing.tag == "action" then
+			pairing.action.callback(inst)
+		else
+			error("unreachable")
+		end
+	end
+
+	if parent and parent.tag == "reactive_property" then
+		bind_property(inst, "Parent", parent.value)
+	elseif parent and parent.tag == "property" then
+		set_property(inst, "Parent", parent.value)
 	end
 
 	return inst

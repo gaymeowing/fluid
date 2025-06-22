@@ -13,9 +13,9 @@ end
 
 local function create(
 	class_name: string
-): (props: { [string | number]: unknown }) -> Instance
+): (props: { [unknown]: unknown }) -> Instance
 	return function(props)
-		return bind(props :: any, try_create_inst(class_name))
+		return (bind(try_create_inst(class_name), props))
 	end
 end
 
