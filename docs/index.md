@@ -15,10 +15,10 @@ hero:
       link: https://github.com/ffrostfall/fluid
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Declarative
+    details: Fluid is strictly declarative.
+  - title: Supports yielding
+    details: Fluid's reactive graph supports yielding in `async` nodes.
+  - title: Modern
+    details: Fluid targets the new solver, and aims to support stylesheet-based UI.
 ---
