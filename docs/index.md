@@ -16,9 +16,9 @@ hero:
 
 features:
   - title: Declarative
-    details: Fluid is strictly declarative.
+    details: Fluid is strictly declarative
   - title: Supports yielding
-    details: Fluid's reactive graph supports yielding in `async` nodes.
+    details: Fluid's reactive graph supports yielding in `async` nodes
   - title: Modern
-    details: Fluid targets the new solver, and aims to support stylesheet-based UI.
+    details: Fluid targets the new solver, and aims to support stylesheet-based UI
 ---
