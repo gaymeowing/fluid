@@ -17,6 +17,7 @@ local mount = require("@self/instances/mount")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
 local source = require("@self/reactive/source")
+local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
 
@@ -41,6 +42,7 @@ local fluid = {}
 
 fluid.create = create
 fluid.mount = mount
+fluid.tags = tags
 
 -- actions
 fluid.action = action.create
