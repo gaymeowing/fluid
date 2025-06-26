@@ -1,119 +1,222 @@
 local bind = require("./bind")
 
 type Instances = {
-	Folder: Folder,
+	AudioChannelSplitter: AudioChannelSplitter,
+	AudioPitchShifter: AudioPitchShifter,
+	AudioDeviceOutput: AudioDeviceOutput,
+	AudioChannelMixer: AudioChannelMixer,
+	AudioTextToSpeech: AudioTextToSpeech,
+	AudioDeviceInput: AudioDeviceInput,
+	AudioDistortion: AudioDistortion,
+	AudioCompressor: AudioCompressor,
+	AudioEqualizer: AudioEqualizer,
+	AudioAnalyzer: AudioAnalyzer,
+	AudioListener: AudioListener,
+	AudioRecorder: AudioRecorder,
+	AudioLimiter: AudioLimiter,
+	AudioFlanger: AudioFlanger,
+	AudioEmitter: AudioEmitter,
+	AudioPlayer: AudioPlayer,
+	AudioReverb: AudioReverb,
+	AudioFilter: AudioFilter,
+	ArcHandles: ArcHandles,
+	AudioFader: AudioFader,
+	AudioEcho: AudioEcho,
+	AdGui: AdGui,
+	BoxHandleAdornment: BoxHandleAdornment,
 	BillboardGui: BillboardGui,
+	BlurEffect: BlurEffect,
+	CylinderHandleAdornment: CylinderHandleAdornment,
+	ConeHandleAdornment: ConeHandleAdornment,
 	CanvasGroup: CanvasGroup,
+	Camera: Camera,
+	DialogChoice: DialogChoice,
+	DragDetector: DragDetector,
+	Dialog: Dialog,
+	Folder: Folder,
 	Frame: Frame,
+	Highlight: Highlight,
+	Handles: Handles,
+	ImageHandLeAdornment: ImageHandleAdornment,
 	ImageButton: ImageButton,
 	ImageLabel: ImageLabel,
-	ScreenGui: ScreenGui,
-	ScrollingFrame: ScrollingFrame,
-	SurfaceGui: SurfaceGui,
-	TextBox: TextBox,
-	TextButton: TextButton,
-	TextLabel: TextLabel,
-	UIAspectRatioConstraint: UIAspectRatioConstraint,
-	UICorner: UICorner,
-	UIGradient: UIGradient,
-	UIGridLayout: UIGridLayout,
-	UIListLayout: UIListLayout,
-	UIPadding: UIPadding,
-	UIPageLayout: UIPageLayout,
-	UIScale: UIScale,
-	UISizeConstraint: UISizeConstraint,
-	UIStroke: UIStroke,
-	UIFlexItem: UIFlexItem,
-	UITableLayout: UITableLayout,
-	UITextSizeConstraint: UITextSizeConstraint,
-	VideoFrame: VideoFrame,
-	ViewportFrame: ViewportFrame,
-	UIDragDetector: UIDragDetector,
+	LineHandleAdornment: LineHandleAdornment,
 	ProximityPrompt: ProximityPrompt,
 	Part: Part,
+	SphereHandLeAdornment: SphereHandleAdornment,
+	SelectionSphere: SelectionSphere,
+	ScrollingFrame: ScrollingFrame,
+	SelectionBox: SelectionBox,
+	StyleDerive: StyleDerive,
+	SurfaceGui: SurfaceGui,
+	StyleSheet: StyleSheet,
+	SoundGroup: SoundGroup,
+	StyleLink: StyleLink,
+	ScreenGui: ScreenGui,
+	StyleBase: StyleBase,
+	StyleRule: StyleRule,
+	Sound: Sound,
+	TextButton: TextButton,
+	TextLabel: TextLabel,
+	TextBox: TextBox,
+	UIAspectRatioConstraint: UIAspectRatioConstraint,
+	UITextSizeConstraint: UITextSizeConstraint,
+	UISizeConstraint: UISizeConstraint,
+	UIDragDetector: UIDragDetector,
+	UITableLayout: UITableLayout,
+	UIPageLayout: UIPageLayout,
+	UIGridLayout: UIGridLayout,
+	UIListLayout: UIListLayout,
+	UIGradient: UIGradient,
+	UIFlexItem: UIFlexItem,
+	UIPadding: UIPadding,
+	UIStroke: UIStroke,
+	UICorner: UICorner,
+	UIScale: UIScale,
+	ViewportFrame: ViewportFrame,
+	VideoFrame: VideoFrame,
+	WireframeHandleAdornment: WireframeHandleAdornment,
 	WorldModel: WorldModel,
-	Camera: Camera,
+	Wire: Wire,
 }
 
-type function GetProperties(instance, instancetype)
-	local properties = types.newtable()
+type UnknownConnectCallback = (...any) -> ()
 
-	local function is_signal(value: type): false | type
-		if not (value:is("class") or value:is("table")) then
-			return false
+type Signal = RBXScriptSignal
+
+type function get_connect(v: type): type?
+	local connect = v:readproperty(types.singleton("Connect"))
+
+	if connect and connect:is("function") then
+		local head = connect:parameters().head
+
+		if not head then
+			return nil
 		end
+		local callback = head[2]
 
-		for key, value in value:properties() do
-			if
-				key:value() == "Connect"
-				and value.read
-				and value.read.tag == "function"
-			then
-				return value.read
-			end
+		if callback and callback:is("function") then
+			return callback
 		end
-
-		return false
 	end
 
-	local function insert(object)
-		if object:readparent() == nil then
-			return
+	return nil
+end
+
+type function is_signal(v: type): type?
+	if v == Signal and v.tag == "class" then
+		return UnknownConnectCallback
+	-- luau lsp types RBXScriptSignals as tables
+	elseif v.tag == "table" then
+		local connect = get_connect(v)
+
+		if connect then
+			return connect
 		end
-		for key, value in object:properties() do
-			local is_a_signal = is_signal(value.read)
-			if is_a_signal and value.read:is("table") then -- luau-lsp
-				local connect_fn = is_a_signal
-				local params = connect_fn:parameters()
-				if params.head then
-					table.remove(params.head, 1)
-				end
+
+		-- i cba to test if this is needed or not
+		local metatable = v:metatable()
+
+		if metatable then
+			connect = get_connect(metatable)
+
+			if connect then
+				return connect
+			end
+		end
+	end
+
+	return nil
+end
+
+type instance = Instance
+
+type Action = {
+	read callback: () -> Instance,
+	read priority: number,
+}
+
+type function GetInstance(class_name: type, instances: type): type
+	if not class_name:is("singleton") then
+		return instance
+	end
+
+	return instances:readproperty(class_name) or instance
+end
+
+-- temp arg for action, because for some reason its not added as a global automatically
+type function GetProperties(class_name: type): type
+	local object = GetInstance(class_name, Instances)
+	local head_table = {}
+	local args_table = { head = head_table }
+	local properties = types.newtable()
+	local current = object
+	local empty_table = {}
+
+	local read_only_properties = table.freeze({
+		types.singleton("RobloxLocked"),
+		types.singleton("ClassName"),
+		types.singleton("UniqueId"),
+	})
+
+	while current do
+		for property, value in current:properties() do
+			if table.find(read_only_properties, property) then
+				continue
+			end
+
+			local value_read = value.read :: type
+			local callback = is_signal(value_read)
+
+			if callback then
+				properties:setproperty(
+					property :: any,
+					types.optional(callback)
+				)
 			elseif
-				value.read:is("function") or value.read:is("intersection")
+				value_read.tag == "function"
+				or value_read.tag == "intersection"
 			then
 				continue
 			elseif value.write then
-				local type = types.optional(
-					types.unionof(
-						types.newfunction({}, { head = { value.read } }),
-						value.write :: any
+				head_table[1] = value_read
+
+				properties:setproperty(
+					property :: any,
+					types.optional(
+						types.unionof(
+							types.newfunction(
+								empty_table :: any,
+								args_table :: any
+							),
+							value.write :: any
+						)
 					)
 				)
-
-				properties:setproperty(key :: any, type)
 			end
 		end
 
-		insert(object:readparent())
+		current = current:readparent()
 	end
-	insert(instance)
 
-	local action = types.newtable({
-		[types.singleton("priority")] = { read = types.number },
-		[types.singleton("callback")] = {
-			read = types.newfunction({ head = { instancetype } }),
-		},
-	} :: any)
-
-	local function_returns_child = types.newfunction()
 	local nested_table_or_function_or_child = types.newtable()
+	local function_returns_child = types.newfunction()
 	local union = types.unionof(
-		instancetype,
+		nested_table_or_function_or_child,
 		function_returns_child,
-		nested_table_or_function_or_child
+		instance
 	)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
 	function_returns_child:setreturns({ union })
-
 	properties:setindexer(
 		types.number,
 		types.optional(
 			types.unionof(
-				action,
-				instancetype,
 				function_returns_child,
-				properties
+				properties,
+				instance,
+				Action
 			)
 		)
 	)
@@ -121,40 +224,21 @@ type function GetProperties(instance, instancetype)
 	return properties
 end
 
-type function GetInstance(instance_name, instances, instancetype)
-	if not instance_name:is("singleton") then
-		return instancetype
-	end
-
-	for key, value in instances:properties() do
-		if (key :: type):value() == instance_name:value() then
-			return value.read
-		end
-	end
-
-	return instancetype
-end
-
-local function try_create_inst(class_name: string): Instance
+local function try_create_instance(class_name: string): Instance
 	local success, result = pcall(Instance.new, class_name)
 	if not success then
 		-- error at the location of the create call
-		error(`Instance class "{class_name}" does not exist`, 3)
+		error(result, 3)
 	end
 
 	return result
 end
 
-local function create<Class>(
-	class_name: Class
-): (
-	GetProperties<GetInstance<Class, Instances, Instance>, Instance>
-) -> GetInstance<Class, Instances, Instance>
-	return function(props: GetProperties<
-		GetInstance<Class, Instances, Instance>,
-		Instance
-	>): GetInstance<Class, Instances, Instance>
-		return bind(try_create_inst(class_name), props :: any) :: any
+local function create<CN>(
+	class_name: CN
+): (GetProperties<CN>) -> GetInstance<CN, Instances>
+	return function(properties)
+		return bind(try_create_instance(class_name), properties) :: any
 	end
 end
 
