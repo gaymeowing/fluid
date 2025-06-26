@@ -1,4 +1,3 @@
-
 local bind = require("./bind")
 
 type Instances = {
@@ -149,13 +148,14 @@ end
 type function GetProperties(class_name: type, action): type
 	local object = GetInstance(class_name)
 	local head_table = {}
-	local args_table =  { head = head_table }
+	local args_table = { head = head_table }
 	local properties = types.newtable()
 	local current = object
 	local empty_table = {}
 
 	local read_only_properties = table.freeze({
-		types.singleton("RobloxLocked"), types.singleton("ClassName"),
+		types.singleton("RobloxLocked"),
+		types.singleton("ClassName"),
 		types.singleton("UniqueId"),
 	})
 
@@ -169,19 +169,29 @@ type function GetProperties(class_name: type, action): type
 			local callback = is_signal(value_read)
 
 			if callback then
-				properties:setproperty(property :: any, types.optional(callback))
-			elseif 
-				value_read.tag == "function" or value_read.tag == "intersection"
+				properties:setproperty(
+					property :: any,
+					types.optional(callback)
+				)
+			elseif
+				value_read.tag == "function"
+				or value_read.tag == "intersection"
 			then
 				continue
 			elseif value.write then
 				head_table[1] = value_read
 
 				properties:setproperty(
-					property :: any, types.optional(types.unionof(
-						types.newfunction(empty_table :: any, args_table :: any),
-						value.write :: any
-					))
+					property :: any,
+					types.optional(
+						types.unionof(
+							types.newfunction(
+								empty_table :: any,
+								args_table :: any
+							),
+							value.write :: any
+						)
+					)
 				)
 			end
 		end
@@ -201,10 +211,14 @@ type function GetProperties(class_name: type, action): type
 	function_returns_child:setreturns({ union })
 	properties:setindexer(
 		types.number,
-		types.optional(types.unionof(
-			action, instance, properties,
-			function_returns_child
-		))
+		types.optional(
+			types.unionof(
+				action,
+				instance,
+				properties,
+				function_returns_child
+			)
+		)
 	)
 
 	return properties
@@ -220,9 +234,9 @@ local function try_create_instance(class_name: string): Instance
 	return result
 end
 
-local function create<Class>(
-	class_name: Class
-): (GetProperties<GetInstance<Class>, Action>) -> GetInstance<Class>
+local function create<Class>(class_name: Class): (
+	GetProperties<GetInstance<Class>, Action>
+) -> GetInstance<Class>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end
