@@ -204,7 +204,7 @@ type function GetProperties(class_name: type, action): type
 	local union = types.unionof(
 		nested_table_or_function_or_child,
 		function_returns_child,
-		instance,
+		instance
 	)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
