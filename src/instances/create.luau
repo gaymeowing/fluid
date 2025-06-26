@@ -136,17 +136,17 @@ type Action = {
 	read priority: number,
 }
 
-type function GetInstance(class_name: type): type
+type function GetInstance(class_name: type, instances: type): type
 	if not class_name:is("singleton") then
 		return instance
 	end
 
-	return Instances:readproperty(class_name) or instance
+	return instances:readproperty(class_name) or instance
 end
 
 -- temp arg for action, because for some reason its not added as a global automatically
-type function GetProperties(class_name: type, action): type
-	local object = GetInstance(class_name)
+type function GetProperties(class_name: type): type
+	local object = GetInstance(class_name, Instances)
 	local head_table = {}
 	local args_table = { head = head_table }
 	local properties = types.newtable()
@@ -216,7 +216,7 @@ type function GetProperties(class_name: type, action): type
 				function_returns_child,
 				properties,
 				instance,
-				action
+				Action
 			)
 		)
 	)
@@ -234,9 +234,9 @@ local function try_create_instance(class_name: string): Instance
 	return result
 end
 
-local function create<Class>(class_name: Class): (
-	GetProperties<GetInstance<Class>, Action>
-) -> GetInstance<Class>
+local function create<CN>(class_name: CN): (
+	GetProperties<CN>
+) -> GetInstance<CN, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end
