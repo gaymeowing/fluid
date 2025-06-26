@@ -234,9 +234,9 @@ local function try_create_instance(class_name: string): Instance
 	return result
 end
 
-local function create<CN>(class_name: CN): (
-	GetProperties<CN>
-) -> GetInstance<CN, Instances>
+local function create<CN>(
+	class_name: CN
+): (GetProperties<CN>) -> GetInstance<CN, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end
