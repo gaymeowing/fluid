@@ -1,60 +1,146 @@
 local bind = require("./bind")
 
 type Instances = {
-	Folder: Folder,
+	AudioChannelSplitter: AudioChannelSplitter,
+	AudioPitchShifter: AudioPitchShifter,
+	AudioDeviceOutput: AudioDeviceOutput,
+	AudioChannelMixer: AudioChannelMixer,
+	AudioTextToSpeech: AudioTextToSpeech,
+	AudioDeviceInput: AudioDeviceInput,
+	AudioDistortion: AudioDistortion,
+	AudioCompressor: AudioCompressor,
+	AudioEqualizer: AudioEqualizer,
+	AudioAnalyzer: AudioAnalyzer,
+	AudioListener: AudioListener,
+	AudioRecorder: AudioRecorder,
+	AudioLimiter: AudioLimiter,
+	AudioFlanger: AudioFlanger,
+	AudioEmitter: AudioEmitter,
+	AudioPlayer: AudioPlayer,
+	AudioReverb: AudioReverb,
+	AudioFilter: AudioFilter,
+	ArcHandles: ArcHandles,
+	AudioFader: AudioFader,
+	AudioEcho: AudioEcho,
+	AdGui: AdGui,
+	BoxHandleAdornment: BoxHandleAdornment,
 	BillboardGui: BillboardGui,
+	BlurEffect: BlurEffect,
+	CylinderHandleAdornment: CylinderHandleAdornment,
+	ConeHandleAdornment: ConeHandleAdornment,
 	CanvasGroup: CanvasGroup,
+	Camera: Camera,
+	DialogChoice: DialogChoice,
+	DragDetector: DragDetector,
+	Dialog: Dialog,
+	Folder: Folder,
 	Frame: Frame,
+	Highlight: Highlight,
+	Handles: Handles,
+	ImageHandLeAdornment: ImageHandleAdornment,
 	ImageButton: ImageButton,
 	ImageLabel: ImageLabel,
-	ScreenGui: ScreenGui,
-	ScrollingFrame: ScrollingFrame,
-	SurfaceGui: SurfaceGui,
-	TextBox: TextBox,
-	TextButton: TextButton,
-	TextLabel: TextLabel,
-	UIAspectRatioConstraint: UIAspectRatioConstraint,
-	UICorner: UICorner,
-	UIGradient: UIGradient,
-	UIGridLayout: UIGridLayout,
-	UIListLayout: UIListLayout,
-	UIPadding: UIPadding,
-	UIPageLayout: UIPageLayout,
-	UIScale: UIScale,
-	UISizeConstraint: UISizeConstraint,
-	UIStroke: UIStroke,
-	UIFlexItem: UIFlexItem,
-	UITableLayout: UITableLayout,
-	UITextSizeConstraint: UITextSizeConstraint,
-	VideoFrame: VideoFrame,
-	ViewportFrame: ViewportFrame,
-	UIDragDetector: UIDragDetector,
+	LineHandleAdornment: LineHandleAdornment,
 	ProximityPrompt: ProximityPrompt,
 	Part: Part,
+	SphereHandLeAdornment: SphereHandleAdornment,
+	SelectionSphere: SelectionSphere,
+	ScrollingFrame: ScrollingFrame,
+	SelectionBox: SelectionBox,
+	StyleDerive: StyleDerive,
+	SurfaceGui: SurfaceGui,
+	StyleSheet: StyleSheet,
+	SoundGroup: SoundGroup,
+	StyleLink: StyleLink,
+	ScreenGui: ScreenGui,
+	StyleBase: StyleBase,
+	StyleRule: StyleRule,
+	Sound: Sound,
+	TextButton: TextButton,
+	TextLabel: TextLabel,
+	TextBox: TextBox,
+	UIAspectRatioConstraint: UIAspectRatioConstraint,
+	UITextSizeConstraint: UITextSizeConstraint,
+	UISizeConstraint: UISizeConstraint,
+	UIDragDetector: UIDragDetector,
+	UITableLayout: UITableLayout,
+	UIPageLayout: UIPageLayout,
+	UIGridLayout: UIGridLayout,
+	UIListLayout: UIListLayout,
+	UIGradient: UIGradient,
+	UIFlexItem: UIFlexItem,
+	UIPadding: UIPadding,
+	UIStroke: UIStroke,
+	UICorner: UICorner,
+	UIScale: UIScale,
+	ViewportFrame: ViewportFrame,
+	VideoFrame: VideoFrame,
+	WireframeHandleAdornment: WireframeHandleAdornment,
 	WorldModel: WorldModel,
-	Camera: Camera,
+	Wire: Wire,
+}
+
+type UnknownConnectCallback = (...any) -> ()
+
+type Signal = RBXScriptSignal
+
+type function get_connect(v: type): type?
+	local connect_names = { 
+		types.singleton("Connect"), 
+		types.singleton("connect")
+	}
+
+	for _, name in connect_names do
+		local connect = v:readproperty(name)
+
+		if connect and connect:is("function") then
+			local head = connect:parameters().head
+
+			if not head then
+				continue
+			end
+			local callback = head[2]
+
+			if callback and callback:is("function") then
+				return callback
+			end
+		end
+	end
+
+	return nil
+end
+
+type function is_signal(v: type): type?
+	if v == Signal and v:is("class") then
+		return UnknownConnectCallback
+	elseif v:is("table") then
+		local connect = get_connect(v)
+
+		if connect then
+			return connect
+		end
+
+		local metatable = v:metatable()
+
+		if metatable then
+			connect = get_connect(metatable)
+
+			if connect then
+				return connect
+			end
+		end
+	end
+
+	return nil
+end
+
+type Action<T> = {
+	read callback: () -> T,
+	read priority: number,
 }
 
 type function GetProperties(instance, instancetype)
 	local properties = types.newtable()
-
-	local function is_signal(value: type): false | type
-		if not (value:is("class") or value:is("table")) then
-			return false
-		end
-
-		for key, value in value:properties() do
-			if
-				key:value() == "Connect"
-				and value.read
-				and value.read.tag == "function"
-			then
-				return value.read
-			end
-		end
-
-		return false
-	end
 
 	local function insert(object)
 		if object:readparent() == nil then
@@ -88,12 +174,7 @@ type function GetProperties(instance, instancetype)
 	end
 	insert(instance)
 
-	local action = types.newtable({
-		[types.singleton("priority")] = { read = types.number },
-		[types.singleton("callback")] = {
-			read = types.newfunction({ head = { instancetype } }),
-		},
-	} :: any)
+	local action = Action(instancetype)
 
 	local function_returns_child = types.newfunction()
 	local nested_table_or_function_or_child = types.newtable()
@@ -121,18 +202,12 @@ type function GetProperties(instance, instancetype)
 	return properties
 end
 
-type function GetInstance(instance_name, instances, instancetype)
+type function GetInstance(instance_name, instancetype)
 	if not instance_name:is("singleton") then
 		return instancetype
 	end
 
-	for key, value in instances:properties() do
-		if (key :: type):value() == instance_name:value() then
-			return value.read
-		end
-	end
-
-	return instancetype
+	return Instances:readproperty(instance_name:value()) or instancetype
 end
 
 local function try_create_inst(class_name: string): Instance
