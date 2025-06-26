@@ -199,12 +199,12 @@ type function GetProperties(class_name: type, action): type
 		current = current:readparent()
 	end
 
-	local function_returns_child = types.newfunction()
 	local nested_table_or_function_or_child = types.newtable()
+	local function_returns_child = types.newfunction()
 	local union = types.unionof(
-		instance,
+		nested_table_or_function_or_child,
 		function_returns_child,
-		nested_table_or_function_or_child
+		instance,
 	)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
@@ -213,10 +213,10 @@ type function GetProperties(class_name: type, action): type
 		types.number,
 		types.optional(
 			types.unionof(
-				action,
-				instance,
+				function_returns_child,
 				properties,
-				function_returns_child
+				instance,
+				action
 			)
 		)
 	)
