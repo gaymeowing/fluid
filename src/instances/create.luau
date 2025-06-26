@@ -1,3 +1,4 @@
+
 local bind = require("./bind")
 
 type Instances = {
@@ -85,25 +86,18 @@ type UnknownConnectCallback = (...any) -> ()
 type Signal = RBXScriptSignal
 
 type function get_connect(v: type): type?
-	local connect_names = { 
-		types.singleton("Connect"), 
-		types.singleton("connect")
-	}
+	local connect = v:readproperty(types.singleton("Connect"))
 
-	for _, name in connect_names do
-		local connect = v:readproperty(name)
+	if connect and connect:is("function") then
+		local head = connect:parameters().head
 
-		if connect and connect:is("function") then
-			local head = connect:parameters().head
+		if not head then
+			return nil
+		end
+		local callback = head[2]
 
-			if not head then
-				continue
-			end
-			local callback = head[2]
-
-			if callback and callback:is("function") then
-				return callback
-			end
+		if callback and callback:is("function") then
+			return callback
 		end
 	end
 
@@ -111,15 +105,17 @@ type function get_connect(v: type): type?
 end
 
 type function is_signal(v: type): type?
-	if v == Signal and v:is("class") then
+	if v == Signal and v.tag == "class" then
 		return UnknownConnectCallback
-	elseif v:is("table") then
+	-- luau lsp types RBXScriptSignals as tables
+	elseif v.tag == "table" then
 		local connect = get_connect(v)
 
 		if connect then
 			return connect
 		end
 
+		-- i cba to test if this is needed or not
 		local metatable = v:metatable()
 
 		if metatable then
@@ -134,87 +130,91 @@ type function is_signal(v: type): type?
 	return nil
 end
 
-type Action<T> = {
-	read callback: () -> T,
+type instance = Instance
+
+type Action = {
+	read callback: () -> Instance,
 	read priority: number,
 }
 
-type function GetProperties(instance, instancetype)
-	local properties = types.newtable()
+type function GetInstance(class_name: type): type
+	if not class_name:is("singleton") then
+		return instance
+	end
 
-	local function insert(object)
-		if object:readparent() == nil then
-			return
-		end
-		for key, value in object:properties() do
-			local is_a_signal = is_signal(value.read)
-			if is_a_signal and value.read:is("table") then -- luau-lsp
-				local connect_fn = is_a_signal
-				local params = connect_fn:parameters()
-				if params.head then
-					table.remove(params.head, 1)
-				end
-			elseif
-				value.read:is("function") or value.read:is("intersection")
+	return Instances:readproperty(class_name) or instance
+end
+
+-- temp arg for action, because for some reason its not added as a global automatically
+type function GetProperties(class_name: type, action): type
+	local object = GetInstance(class_name)
+	local head_table = {}
+	local args_table =  { head = head_table }
+	local properties = types.newtable()
+	local current = object
+	local empty_table = {}
+
+	local read_only_properties = table.freeze({
+		types.singleton("RobloxLocked"), types.singleton("ClassName"),
+		types.singleton("UniqueId"),
+	})
+
+	while current do
+		for property, value in current:properties() do
+			if table.find(read_only_properties, property) then
+				continue
+			end
+
+			local value_read = value.read :: type
+			local callback = is_signal(value_read)
+
+			if callback then
+				properties:setproperty(property :: any, types.optional(callback))
+			elseif 
+				value_read.tag == "function" or value_read.tag == "intersection"
 			then
 				continue
 			elseif value.write then
-				local type = types.optional(
-					types.unionof(
-						types.newfunction({}, { head = { value.read } }),
-						value.write :: any
-					)
-				)
+				head_table[1] = value_read
 
-				properties:setproperty(key :: any, type)
+				properties:setproperty(
+					property :: any, types.optional(types.unionof(
+						types.newfunction(empty_table :: any, args_table :: any),
+						value.write :: any
+					))
+				)
 			end
 		end
 
-		insert(object:readparent())
+		current = current:readparent()
 	end
-	insert(instance)
-
-	local action = Action(instancetype)
 
 	local function_returns_child = types.newfunction()
 	local nested_table_or_function_or_child = types.newtable()
 	local union = types.unionof(
-		instancetype,
+		instance,
 		function_returns_child,
 		nested_table_or_function_or_child
 	)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
 	function_returns_child:setreturns({ union })
-
 	properties:setindexer(
 		types.number,
-		types.optional(
-			types.unionof(
-				action,
-				instancetype,
-				function_returns_child,
-				properties
-			)
-		)
+		types.optional(types.unionof(
+			action, instance, properties,
+			function_returns_child
+		))
 	)
 
 	return properties
 end
 
-type function GetInstance(instance_name, instancetype)
-	if not instance_name:is("singleton") then
-		return instancetype
-	end
-
-	return Instances:readproperty(instance_name:value()) or instancetype
-end
-
-local function try_create_inst(class_name: string): Instance
+local function try_create_instance(class_name: string): Instance
 	local success, result = pcall(Instance.new, class_name)
 	if not success then
 		-- error at the location of the create call
-		error(`Instance class "{class_name}" does not exist`, 3)
+		error(result, 3)
 	end
 
 	return result
@@ -222,14 +222,9 @@ end
 
 local function create<Class>(
 	class_name: Class
-): (
-	GetProperties<GetInstance<Class, Instances, Instance>, Instance>
-) -> GetInstance<Class, Instances, Instance>
-	return function(props: GetProperties<
-		GetInstance<Class, Instances, Instance>,
-		Instance
-	>): GetInstance<Class, Instances, Instance>
-		return bind(try_create_inst(class_name), props :: any) :: any
+): (GetProperties<GetInstance<Class>, Action>) -> GetInstance<Class>
+	return function(properties)
+		return bind(try_create_instance(class_name), properties) :: any
 	end
 end
 
