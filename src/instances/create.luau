@@ -225,17 +225,14 @@ type function GetProperties(class_name: type): type
 end
 
 local function try_create_instance(class_name: string): Instance
-	local success, result = pcall(Instance.new, class_name)
-	if not success then
-		-- error at the location of the create call
-		error(result, 3)
-	end
+	local success, call_result = pcall(Instance.new, class_name)
+	assert(success, call_result)
 
-	return result
+	return call_result
 end
 
 local function create<CN>(
-	class_name: CN
+	class_name: CN | keyof<Instances> | ""
 ): (GetProperties<CN>) -> GetInstance<CN, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
