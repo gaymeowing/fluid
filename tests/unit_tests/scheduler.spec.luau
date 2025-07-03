@@ -1,13 +1,16 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local signal = require("@vendor/signal")
+local task = require("@lune/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
 local render_event: signal.Identity<number> = signal()
 
-scheduler.provide(function(render)
+local step_fluid = fluid.provide_scheduler()
+
+task.spawn(function()
 	while true do
-		render(render_event:wait())
+		step_fluid(render_event:wait())
 	end
 
 	return error("unreachable")
