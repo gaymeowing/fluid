@@ -1,3 +1,4 @@
+local action = require("./action")
 local bind = require("./bind")
 
 type Instances = {
@@ -131,10 +132,7 @@ end
 
 type instance = Instance
 
-type Action = {
-	read callback: () -> Instance,
-	read priority: number,
-}
+type Action = action.Identity
 
 type function GetInstance(class_name: type, instances: type): type
 	if not class_name:is("singleton") then
@@ -204,22 +202,14 @@ type function GetProperties(class_name: type): type
 	local union = types.unionof(
 		nested_table_or_function_or_child,
 		function_returns_child,
-		instance
+		instance,
+		Action
 	)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
 	function_returns_child:setreturns({ union })
-	properties:setindexer(
-		types.number,
-		types.optional(
-			types.unionof(
-				function_returns_child,
-				properties,
-				instance,
-				Action
-			)
-		)
-	)
+
+	properties:setindexer(types.number, types.optional(union))
 
 	return properties
 end
@@ -233,7 +223,9 @@ end
 
 local function create<CN>(
 	class_name: CN | keyof<Instances> | ""
-): (GetProperties<CN>) -> GetInstance<CN, Instances>
+): (
+	props: GetProperties<CN>
+) -> GetInstance<CN, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end
