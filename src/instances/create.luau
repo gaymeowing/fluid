@@ -221,11 +221,11 @@ local function try_create_instance(class_name: string): Instance
 	return call_result
 end
 
-local function create<CN>(
-	class_name: CN | keyof<Instances> | ""
+local function create<ClassName>(
+	class_name: ClassName | keyof<Instances> | ""
 ): (
-	props: GetProperties<CN>
-) -> GetInstance<CN, Instances>
+	props: GetProperties<ClassName>
+) -> GetInstance<ClassName, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end
