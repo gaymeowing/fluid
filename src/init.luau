@@ -26,22 +26,29 @@ local untrack = require("@self/reactive/untrack")
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 
+local scheduler_thread: thread? = nil
+
+local function step(delta_time: number)
+	-- This will call intervals
+	scheduler.step(delta_time)
+
+	-- Runs deferred nodes
+	graph.flush_deferred_nodes()
+
+	-- Finally, after all state is reconciled, we animate
+	lerp.step(delta_time)
+	spring.step(delta_time)
+end
+
 if game then
 	local RunService = game:GetService("RunService")
 
-	scheduler.provide(function(render)
+	scheduler_thread = task.spawn(function()
 		while true do
 			local delta_time = RunService.PreRender:Wait()
 
-			graph.flush_deferred_nodes()
-
-			lerp.step(delta_time)
-			spring.step(delta_time)
-
-			render(delta_time)
+			step(delta_time)
 		end
-
-		return error("unreachable")
 	end)
 end
 
@@ -71,6 +78,16 @@ fluid.for_values = for_values
 -- Animation
 fluid.lerp = lerp.create
 fluid.spring = spring.create
+
+-- Scheduling
+fluid.provide_scheduler = function(): (delta_time: number) -> ()
+	if scheduler_thread then
+		task.cancel(scheduler_thread)
+		scheduler_thread = nil
+	end
+
+	return step
+end
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 
