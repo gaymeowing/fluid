@@ -1,10 +1,17 @@
 local process = require("@lune/process")
 local _, _, _, FINISH = require("@vendor/testkit").test()
 
-local function tests()
+local tests = {}
+
+function tests.fuzz()
+	require("@self/fuzz_tests/colors.fuzz")()
+end
+
+function tests.unit_tests()
 	require("@self/unit_tests/reactive_graph.spec")
 	require("@self/unit_tests/scheduler.spec")
 	require("@self/unit_tests/bind.spec")
+	require("@self/unit_tests/colors.spec")
 
 	local ok = FINISH()
 	if not ok then

@@ -30,6 +30,8 @@ local function iso_date()
 	return fluid.create("ScreenGui")({
 		Name = "iso",
 
+		fluid.tags({ "hi" }),
+
 		fluid.create("TextButton")({
 			Text = text,
 

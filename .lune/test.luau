@@ -1,1 +1,1 @@
-require("@tests/")()
+require("@tests/").unit_tests()
