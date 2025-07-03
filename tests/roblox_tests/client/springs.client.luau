@@ -3,9 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local fluid = require(ReplicatedStorage.fluid)
 local create = fluid.create
-local keys = fluid.for_keys
 local mount = fluid.mount
-local source = fluid.source
 
 local parent_screen = create("ScreenGui")({
 	Name = "ParentScreen",
@@ -14,6 +12,10 @@ local parent_screen = create("ScreenGui")({
 })
 
 mount(function()
+	local is_even_second = fluid.interval(function()
+		return (os.clock() // 1) % 2 == 1
+	end, 2)
+
 	return create("Frame")({
 		Size = UDim2.fromScale(1, 1),
 		Position = fluid.spring(
@@ -23,6 +25,12 @@ mount(function()
 			1,
 			1
 		),
+
+		fluid.show(function()
+			return is_even_second()
+		end, function()
+			return Instance.new("Frame")
+		end),
 
 		BackgroundColor3 = fluid.spring(
 			fluid.interval(function()

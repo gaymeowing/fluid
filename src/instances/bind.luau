@@ -111,9 +111,21 @@ local function bind_reactive_child(
 		function(value: { [Instance]: true })
 			local source_result = func()
 
+			if not source_result then
+				for old_inst in value do
+					old_inst:Destroy()
+				end
+
+				return value
+			end
+
 			if typeof(source_result) == "Instance" then
 				if value[source_result] then
 					return value
+				end
+
+				for old_inst in value do
+					old_inst:Destroy()
 				end
 
 				source_result.Parent = inst

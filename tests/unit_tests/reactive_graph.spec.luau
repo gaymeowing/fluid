@@ -824,4 +824,28 @@ TEST(
 	end)
 )
 
+TEST(
+	"show",
+	wrap_root(function()
+		CASE("works")
+		do
+			local condition_source = fluid.source(true)
+
+			local node = fluid.show(function()
+				return not condition_source()
+			end, function()
+				return "truthy condition"
+			end, function()
+				return "falsy condition"
+			end)
+
+			CHECK(node() == "falsy condition")
+
+			condition_source(false)
+
+			CHECK(node() == "truthy condition")
+		end
+	end)
+)
+
 return nil
