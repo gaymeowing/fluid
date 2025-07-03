@@ -1,6 +1,5 @@
 local graph = require("../reactive/graph")
 local read = require("../utils/read")
-local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 
 local active_animations = {}
@@ -45,7 +44,9 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	end,
 }
 
-local function lerp<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
+local lerp = {}
+
+function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 	local output = graph.create_source_node(read(goal))
 
 	local function effect()
@@ -56,6 +57,8 @@ local function lerp<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 			takes = takes,
 			time_passed = 0,
 		}
+
+		return nil
 	end
 
 	graph.create_reactive_node(
@@ -70,9 +73,9 @@ local function lerp<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 	end
 end
 
-scheduler.on_render(function(dt)
+function lerp.step(delta_time: number)
 	for output, data in active_animations do
-		data.time_passed += dt
+		data.time_passed += delta_time
 		local kind = typeof(output.cached_value)
 		local fn = lerp_functions[kind]
 		local t = math.clamp(data.time_passed / read(data.takes), 0, 1)
@@ -84,6 +87,6 @@ scheduler.on_render(function(dt)
 		local interpolated = fn(data.start, data.goal, t)
 		graph.update_source_node(output, interpolated)
 	end
-end)
+end
 
 return lerp

@@ -18,6 +18,7 @@ local mount = require("@self/instances/mount")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
 local source = require("@self/reactive/source")
+local spring = require("@self/anim/spring/spring_file")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
@@ -31,7 +32,12 @@ if game then
 	scheduler.provide(function(render)
 		while true do
 			local delta_time = RunService.PreRender:Wait()
+
 			graph.flush_deferred_nodes()
+
+			lerp.step(delta_time)
+			spring.step(delta_time)
+
 			render(delta_time)
 		end
 
@@ -62,7 +68,9 @@ fluid.for_keys = for_keys
 fluid.async = async
 fluid.for_values = for_values
 
-fluid.lerp = lerp
+-- Animation
+fluid.lerp = lerp.create
+fluid.spring = spring.create
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 
