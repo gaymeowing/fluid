@@ -28,6 +28,8 @@ local untrack = require("@self/reactive/untrack")
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 
+export type Action = action.Identity
+
 local scheduler_thread: thread? = nil
 
 local function step(delta_time: number)
