@@ -5,6 +5,7 @@ layout: home
 hero:
   name: "fluid"
   text: "Declarative UI framework for Roblox"
+  image: /assets/fishbowl_cat_248x.png
 
   actions:
     - theme: brand
