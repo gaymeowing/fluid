@@ -1,4 +1,3 @@
--- exists so we
 local action_metatable_symbol = table.freeze({})
 
 export type Identity = setmetatable<{
@@ -10,8 +9,9 @@ local action = {
 	metatable = action_metatable_symbol,
 }
 
-function action.is_action(action: {} & unknown): boolean
-	return getmetatable(action) :: any == action_metatable_symbol
+function action.is_action(action: unknown): boolean
+	return type(action) == "table"
+		and (getmetatable(action :: any) == action_metatable_symbol)
 end
 
 function action.create(

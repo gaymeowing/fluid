@@ -148,7 +148,7 @@ end
 
 local function evaluate(
 	inst: Instance,
-	props: { [unknown]: unknown },
+	props: { [unknown & number]: unknown },
 	existing_array: { Pair }?
 ): { Pair }
 	local resulting_array: { Pair } = existing_array or {}
@@ -216,7 +216,7 @@ local function evaluate(
 	return resulting_array
 end
 
-local function bind(inst: Instance, props: { [unknown]: unknown })
+local function bind(inst: Instance, props: { [unknown & number]: unknown })
 	local pairings = evaluate(inst, props)
 	local parent: (ReactivePropertyPair<Instance> | PropertyPair<Instance>)? =
 		nil

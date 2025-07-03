@@ -10,7 +10,7 @@ local function bind_tag(instance: Instance, tag: string)
 	end)
 end
 
-local function tags<T...>(tags: { string | () -> string | nil })
+local function tags(tags: { string | () -> string? }): action.Identity
 	return action.create(function(instance)
 		for _, tag in tags do
 			if typeof(tag) == "string" then
