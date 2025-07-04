@@ -143,7 +143,7 @@ type function GetInstance(class_name: type, instances: type): type
 end
 
 -- temp arg for action, because for some reason its not added as a global automatically
-type function GetProperties(class_name: type): type
+export type function PropertiesFor(class_name: type): type
 	local object = GetInstance(class_name, Instances)
 	local head_table = {}
 	local args_table = { head = head_table }
@@ -224,7 +224,7 @@ end
 local function create<ClassName>(
 	class_name: ClassName | keyof<Instances> | ""
 ): (
-	props: GetProperties<ClassName>
+	props: PropertiesFor<ClassName>
 ) -> GetInstance<ClassName, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
