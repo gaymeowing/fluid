@@ -2,7 +2,7 @@
 local action_metatable_symbol = table.freeze({})
 
 export type Identity = setmetatable<{
-	callback: (inst: Instance) -> (),
+	callback: (instance: Instance) -> (),
 	priority: number,
 }, typeof(action_metatable_symbol)>
 
@@ -15,7 +15,7 @@ function action.is_action(action: {} & unknown): boolean
 end
 
 function action.create(
-	callback: (inst: Instance) -> (),
+	callback: (instance: Instance) -> (),
 	priority: number?
 ): Identity
 	return setmetatable({
