@@ -21,6 +21,7 @@ exclude = [
 	"roblox-tests.project.json",
 	"rokit.toml",
 	"stylua.toml",
+	"gh-assets",
 ]
 
 [dependencies]
