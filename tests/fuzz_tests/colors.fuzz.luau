@@ -15,10 +15,7 @@ local function oklab_fuzz()
 				local original = vector.create(r, g, b)
 
 				assert(
-					colors_within(
-						oklab.to_srgb(oklab.from_srgb(original)),
-						original
-					),
+					colors_within(oklab.to_srgb(oklab.from_srgb(original)), original),
 					"colors not within"
 				)
 			end

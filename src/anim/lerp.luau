@@ -29,10 +29,7 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 		)
 	end,
 	UDim = function(a: UDim, b: UDim, t: number)
-		return UDim.new(
-			math.lerp(a.Scale, b.Scale, t),
-			math.lerp(a.Offset, b.Offset, t)
-		)
+		return UDim.new(math.lerp(a.Scale, b.Scale, t), math.lerp(a.Offset, b.Offset, t))
 	end,
 	UDim2 = function(a: UDim2, b: UDim2, t: number)
 		return UDim2.new(
@@ -61,11 +58,7 @@ function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 		return nil
 	end
 
-	graph.create_reactive_node(
-		graph.assert_stable_parent(),
-		effect,
-		"deferred"
-	)
+	graph.create_reactive_node(graph.assert_stable_parent(), effect, "deferred")
 
 	return function()
 		graph.push_dependency(output)

@@ -28,16 +28,12 @@ type SpringState = {
 	unpacked_value: AnimatableDataType,
 }
 
-local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } =
-	{}
+local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } = {}
 
-local function pack_type(
-	value: AnimatableDataType
-): (AnimatableDataTypeEnum, { number })
+local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { number })
 	if typeof(value) == "Color3" then
 		-- oklab conversion
-		local intermediate_vector =
-			oklab.from_srgb(vector.create(value.R, value.G, value.B))
+		local intermediate_vector = oklab.from_srgb(vector.create(value.R, value.G, value.B))
 
 		return "color",
 			{
@@ -46,8 +42,7 @@ local function pack_type(
 				intermediate_vector.z,
 			}
 	elseif typeof(value) == "UDim2" then
-		return "udim2",
-			{ value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset }
+		return "udim2", { value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset }
 	elseif typeof(value) == "UDim" then
 		return "udim", { value.Scale, value.Offset }
 	elseif type(value) == "vector" then
@@ -63,14 +58,9 @@ local function unpack_type(
 ): AnimatableDataType
 	if type_string == "color" then
 		-- oklab conversion
-		local intermediate_vector =
-			oklab.to_srgb(vector.create(array[1], array[2], array[3]))
+		local intermediate_vector = oklab.to_srgb(vector.create(array[1], array[2], array[3]))
 
-		return Color3.new(
-			intermediate_vector.x,
-			intermediate_vector.y,
-			intermediate_vector.z
-		)
+		return Color3.new(intermediate_vector.x, intermediate_vector.y, intermediate_vector.z)
 	elseif type_string == "vector" then
 		return vector.create(array[1], array[2], array[3])
 	elseif type_string == "udim" then
@@ -83,8 +73,7 @@ local function unpack_type(
 end
 
 local function step_spring<T>(state: SpringState, delta_time: number)
-	local pos_pos, pos_vel, vel_pos, vel_vel =
-		coefficients(delta_time, state.damping, state.speed)
+	local pos_pos, pos_vel, vel_pos, vel_vel = coefficients(delta_time, state.damping, state.speed)
 
 	-- iterate and solve the spring for each value in our SpringValue
 	for i = 1, state.elements do
@@ -113,11 +102,7 @@ end
 
 local spring_file = {}
 
-function spring_file.create<T>(
-	input: types.UsedAs<T>,
-	speed: number,
-	damping: number
-): T
+function spring_file.create<T>(input: types.UsedAs<T>, speed: number, damping: number): T
 	-- initialize spring state early so we can reference it in the effect for the output node
 	local spring_state: SpringState
 
@@ -125,10 +110,7 @@ function spring_file.create<T>(
 		local input_as_value = read(input)
 
 		local datatype, array = pack_type(input_as_value)
-		assert(
-			datatype == spring_state.datatype,
-			"Can't switch the data types of a spring"
-		)
+		assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
 
 		spring_state.target = array
 

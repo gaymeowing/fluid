@@ -167,14 +167,8 @@ export type function PropertiesFor(class_name: type): type
 			local callback = is_signal(value_read)
 
 			if callback then
-				properties:setproperty(
-					property :: any,
-					types.optional(callback)
-				)
-			elseif
-				value_read.tag == "function"
-				or value_read.tag == "intersection"
-			then
+				properties:setproperty(property :: any, types.optional(callback))
+			elseif value_read.tag == "function" or value_read.tag == "intersection" then
 				continue
 			elseif value.write then
 				head_table[1] = value_read
@@ -183,10 +177,7 @@ export type function PropertiesFor(class_name: type): type
 					property :: any,
 					types.optional(
 						types.unionof(
-							types.newfunction(
-								empty_table :: any,
-								args_table :: any
-							),
+							types.newfunction(empty_table :: any, args_table :: any),
 							value.write :: any
 						)
 					)
@@ -199,12 +190,8 @@ export type function PropertiesFor(class_name: type): type
 
 	local nested_table_or_function_or_child = types.newtable()
 	local function_returns_child = types.newfunction()
-	local union = types.unionof(
-		nested_table_or_function_or_child,
-		function_returns_child,
-		instance,
-		Action
-	)
+	local union =
+		types.unionof(nested_table_or_function_or_child, function_returns_child, instance, Action)
 
 	nested_table_or_function_or_child:setindexer(types.number, union)
 	function_returns_child:setreturns({ union })

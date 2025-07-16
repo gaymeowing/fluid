@@ -10,14 +10,10 @@ local action = {
 }
 
 function action.is_action(action: unknown): boolean
-	return type(action) == "table"
-		and (getmetatable(action :: any) == action_metatable_symbol)
+	return type(action) == "table" and (getmetatable(action :: any) == action_metatable_symbol)
 end
 
-function action.create(
-	callback: (inst: Instance) -> (),
-	priority: number?
-): Identity
+function action.create(callback: (inst: Instance) -> (), priority: number?): Identity
 	return setmetatable({
 		callback = callback,
 		priority = priority or 1,

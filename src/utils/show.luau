@@ -1,11 +1,7 @@
 local derive = require("../reactive/derive")
 local untrack = require("../reactive/untrack")
 
-local function show<T, U>(
-	condition: () -> boolean,
-	truthy: () -> T,
-	falsy: (() -> U)?
-): () -> T | U
+local function show<T, U>(condition: () -> boolean, truthy: () -> T, falsy: (() -> U)?): () -> T | U
 	return derive(function()
 		if condition() then
 			return untrack(truthy)
@@ -18,7 +14,7 @@ local function show<T, U>(
 end
 
 return show :: (<T>(condition: () -> boolean, truthy: () -> T) -> T?) & <T, U>(
-	condition: () -> boolean,
-	truthy: () -> T,
-	falsy: () -> U
-) -> T | U
+		condition: () -> boolean,
+		truthy: () -> T,
+		falsy: () -> U
+	) -> T | U

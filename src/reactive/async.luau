@@ -23,8 +23,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end :: any,
 		"async"
 	)
-	local state: graph.SourceNode<State> =
-		graph.create_source_node("ok") :: any
+	local state: graph.SourceNode<State> = graph.create_source_node("ok") :: any
 
 	local function set(new: T)
 		graph.update_source_node(value :: any, new)
@@ -57,11 +56,8 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 	end
 
-	reactive_node = graph.create_reactive_node(
-		graph.assert_stable_parent(),
-		update :: any,
-		"deferred"
-	)
+	reactive_node =
+		graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "deferred")
 
 	graph.evaluate_node(reactive_node)
 

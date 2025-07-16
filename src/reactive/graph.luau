@@ -87,11 +87,7 @@ local function run_as_unsafe<T, U...>(
 	return call
 end
 
-local function run_as<T, U...>(
-	owner: Node<any>?,
-	fn: (U...) -> T,
-	...: U...
-): result.Identity<T, unknown>
+local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): result.Identity<T, unknown>
 	local previous_processing = get_scope()
 	set_scope(owner)
 	local call = result.call(fn, ...)
@@ -225,8 +221,7 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 		push_dependency(node)
 
 		if
-			node.evaluation ~= "eager"
-				and is_similar(previous_result, call.value)
+			node.evaluation ~= "eager" and is_similar(previous_result, call.value)
 			or node.evaluation == "async"
 		then
 			return result.ok(node.cached_value)
@@ -262,9 +257,7 @@ local function is_dirty<T>(node: ReactiveNode<T>)
 	return #node.depending_on == 0
 end
 
-local function evaluate_node<T>(
-	node: SourceNode<T> | ReactiveNode<T>
-): result.Identity<T, string>
+local function evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): result.Identity<T, string>
 	if node.effect == false or node.state == "clean" then
 		push_dependency(node :: SourceNode<T> | ReactiveNode<T>)
 
@@ -380,10 +373,7 @@ function graph.create_reactive_node<T>(
 	return node
 end
 
-function graph.create_stable_node<T>(
-	parent: Node<T> | false,
-	delay_destroy: number?
-)
+function graph.create_stable_node<T>(parent: Node<T> | false, delay_destroy: number?)
 	local node: StableNode<T> = {
 		parent = parent,
 
@@ -432,10 +422,7 @@ function graph.push_cleanup<T>(scope: Node<T>, cleanup: () -> ())
 end
 
 function graph.assert_scope<T>(): ReactiveNode<T> | StableNode<T>
-	return assert(
-		get_scope(),
-		"reactive scope error thing, TODO error message"
-	)
+	return assert(get_scope(), "reactive scope error thing, TODO error message")
 end
 
 function graph.assert_stable_parent<T>(): StableNode<T>

@@ -8,22 +8,15 @@ local function under_dampened(
 	local exp = math.exp(-1 * t * speed * damping)
 	local exp_sin = exp * math.sin(alpha * t)
 	local exp_cos = exp * math.cos(alpha * t)
-	local exp_sin_speed_damping_over_alpha = exp_sin
-		* speed
-		* damping
-		* over_alpha
+	local exp_sin_speed_damping_over_alpha = exp_sin * speed * damping * over_alpha
 
 	return exp_sin_speed_damping_over_alpha + exp_cos,
 		exp_sin * over_alpha,
-		(exp_sin * alpha + speed * damping * exp_sin_speed_damping_over_alpha)
-			* -1,
+		(exp_sin * alpha + speed * damping * exp_sin_speed_damping_over_alpha) * -1,
 		exp_cos - exp_sin_speed_damping_over_alpha
 end
 
-local function critically_dampened(
-	t: number,
-	speed: number
-): (number, number, number, number)
+local function critically_dampened(t: number, speed: number): (number, number, number, number)
 	local time_speed = t * speed
 	local time_speed_neg1 = time_speed * -1
 	local exp = math.exp(time_speed_neg1)

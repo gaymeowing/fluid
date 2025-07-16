@@ -18,17 +18,10 @@ local function tags(tags: { string | () -> string? }): action.Identity
 				continue
 			end
 
-			graph.create_reactive_node(
-				graph.assert_stable_parent(),
-				function(): nil
-					local current = tag()
-					return if current
-						then bind_tag(instance, current)
-						else nil
-				end,
-				"deferred",
-				nil
-			)
+			graph.create_reactive_node(graph.assert_stable_parent(), function(): nil
+				local current = tag()
+				return if current then bind_tag(instance, current) else nil
+			end, "deferred", nil)
 		end
 	end)
 end

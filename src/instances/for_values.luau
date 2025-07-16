@@ -79,8 +79,7 @@ local function values<V, KI, KO>(
 		return output_array
 	end
 
-	local reactive_node =
-		graph.create_reactive_node(child_parent, update, "lazy", {})
+	local reactive_node = graph.create_reactive_node(child_parent, update, "lazy", {})
 
 	return function()
 		local result = graph.evaluate_node(reactive_node)
