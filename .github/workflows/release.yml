@@ -1,10 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
-  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   release:
@@ -24,9 +22,3 @@ jobs:
 
       - name: Upload to Wally
         run: wally publish
-
-      - name: Github Actions release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          token: ${{ secrets.RELEASE_TOKEN }}
