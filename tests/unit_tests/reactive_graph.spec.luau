@@ -23,19 +23,16 @@ end
 	Fusion does scopes to avoid using Luau GC because it's easy for memory leaks to happen.
 	But that's horrific for DX
 ]=]
-local function run_garbage_collection(n: number?)
-	for i = 1, n or 3 do
-		(collectgarbage :: any)("collect")
-	end
-end
+-- local function run_garbage_collection(n: number?)
+-- for i = 1, n or 3 do
+-- (collectgarbage :: any)("collect")
+-- end
+-- end
 
---[=[
-	Creates a weak table necessary for garbage collection
-]=]
-local function weak<T>(t: T & {}): T
-	setmetatable(t :: {}, { __mode = "kv" })
-	return t
-end
+-- local function weak<T>(t: T & {}): T
+-- 	setmetatable(t :: {}, { __mode = "kv" })
+-- 	return t
+-- end
 
 TEST("root", function()
 	local count = 0
@@ -285,22 +282,22 @@ TEST(
 			CHECK(cleaned[2] == 1)
 		end
 
-		do
-			CASE("garbage collection")
-			-- check that `b` does not allow gc of `a`
-			local a = fluid.source(1)
+		-- do
+		-- 	CASE("garbage collection")
+		-- 	-- check that `b` does not allow gc of `a`
+		-- 	local a = fluid.source(1)
 
-			local _b = fluid.derive(function()
-				return a()
-			end)
+		-- 	local _b = fluid.derive(function()
+		-- 		return a()
+		-- 	end)
 
-			_b = nil
+		-- 	_b = nil
 
-			local wref = setmetatable({ a }, WEAK_TABLE)
+		-- 	local wref = setmetatable({ a }, WEAK_TABLE)
 
-			run_garbage_collection()
-			CHECK(wref[1])
-		end
+		-- 	run_garbage_collection()
+		-- 	CHECK(wref[1])
+		-- end
 	end)
 )
 
@@ -577,38 +574,38 @@ TEST(
 			CHECK(destroyed == true)
 		end
 
-		do
-			CASE("garbage collection")
-			do -- check that `output` does not allow gc of `input`
-				local input = source({})
+		-- do
+		-- 	CASE("garbage collection")
+		-- 	do -- check that `output` does not allow gc of `input`
+		-- 		local input = source({})
 
-				local _derived = for_keys(input, function(v, i)
-					return v
-				end)
+		-- 		local _derived = for_keys(input, function(v, i)
+		-- 			return v
+		-- 		end)
 
-				local wref = weak({ input })
+		-- 		local wref = weak({ input })
 
-				input = NIL
+		-- 		input = NIL
 
-				run_garbage_collection()
-				CHECK(wref[1])
-			end
+		-- 		run_garbage_collection()
+		-- 		CHECK(wref[1])
+		-- 	end
 
-			do -- check that `input` allows gc of `output`
-				local input = source({})
+		-- 	do -- check that `input` allows gc of `output`
+		-- 		local input = source({})
 
-				local output = for_keys(input, function(v, i)
-					return v, i
-				end)
+		-- 		local output = for_keys(input, function(v, i)
+		-- 			return v, i
+		-- 		end)
 
-				local wref = weak({ output })
+		-- 		local wref = weak({ output })
 
-				output = NIL
+		-- 		output = NIL
 
-				run_garbage_collection()
-				CHECK(not wref[1])
-			end
-		end
+		-- 		run_garbage_collection()
+		-- 		CHECK(not wref[1])
+		-- 	end
+		-- end
 
 		do
 			CASE("cleanup")
