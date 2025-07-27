@@ -700,6 +700,9 @@ TEST(
 			local input = source({ 1, 2, 3 })
 
 			local output = for_values(input, function(v, k)
+				CHECK(typeof(v) == "number")
+				CHECK(typeof(k()) == "number")
+
 				return tostring(v)
 			end)
 
@@ -715,6 +718,8 @@ TEST(
 			local count = table.create(3, 0)
 
 			local output = for_values(input, function(v, i)
+				CHECK(typeof(v) == "number")
+				CHECK(typeof(i()) == "number")
 				count[v] += 1
 				return i
 			end)
@@ -737,6 +742,8 @@ TEST(
 			local destroyed = false
 
 			local output = for_values(input, function(v, i)
+				CHECK(typeof(v) == "number")
+				CHECK(typeof(i()) == "number")
 				local s = source(tostring(i()))
 				effect(function()
 					s(tostring(i()))
@@ -775,6 +782,26 @@ TEST(
 
 			CHECK(t[1].v == 1)
 			CHECK(t[1].i() == 1)
+			CHECK(t[2] == nil)
+			CHECK(t[3] == nil)
+		end
+
+		do
+			CASE("no unnecessary reavals")
+			local input = source({ 1 })
+			local evaluated = {}
+
+			local output = for_values(input, function(v, i)
+				CHECK(evaluated[v] == nil)
+				evaluated[v] = true
+				return true
+			end)
+
+			input({ 2, 1 })
+			input({ 1 })
+
+			local t = output()
+
 			CHECK(t[2] == nil)
 			CHECK(t[3] == nil)
 		end
