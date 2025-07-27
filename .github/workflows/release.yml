@@ -4,8 +4,14 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
 jobs:
-  release:
+  upload-wally:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,3 +28,21 @@ jobs:
 
       - name: Upload to Wally
         run: wally publish
+
+  upload-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ffrostfall/fluid
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.0
+
+      - name: Build rbxm
+        run: rojo build default.project.json -o build.rbxm
+
+      - name: Release
+        run: gh release upload ${{github.event.release.tag_name}} build.rbxm
