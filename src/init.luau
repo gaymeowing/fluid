@@ -23,6 +23,7 @@ local scheduler = require("@self/scheduler")
 local show = require("@self/utils/show")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
+local switch = require("@self/utils/switch")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
@@ -84,6 +85,7 @@ fluid.async = async
 fluid.for_values = for_values
 fluid.read = read
 fluid.show = show
+fluid.switch = switch
 
 -- Animation
 fluid.lerp = lerp.create
