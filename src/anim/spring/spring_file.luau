@@ -28,6 +28,12 @@ type SpringState = {
 	unpacked_value: AnimatableDataType,
 }
 
+type SpringControls<T> = {
+	position: T?,
+	impulse: T?,
+	velocity: T?,
+}
+
 local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } = {}
 
 local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { number })
@@ -106,7 +112,11 @@ end
 
 local spring_file = {}
 
-function spring_file.create<T>(input: types.UsedAs<T>, speed: number, damping: number): T
+function spring_file.create<T>(
+	input: types.UsedAs<T>,
+	speed: number,
+	damping: number
+): (T, (SpringControls<T>) -> ())
 	-- initialize spring state early so we can reference it in the effect for the output node
 	local spring_state: SpringState
 
@@ -158,6 +168,25 @@ function spring_file.create<T>(input: types.UsedAs<T>, speed: number, damping: n
 	return function()
 		graph.push_dependency(output)
 		return output.cached_value
+	end, function(controls: SpringControls<T>)
+		on_update()
+
+		if controls.position then
+			local _datatype, array = pack_type(controls.position)
+			spring_state.position = array
+		end
+
+		if controls.velocity then
+			local _datatype, array = pack_type(controls.velocity)
+			spring_state.velocity = array
+		end
+
+		if controls.impulse then
+			local _datatype, array = pack_type(controls.impulse)
+			for i = 1, #array do
+				spring_state.velocity[i] += array[i]
+			end
+		end
 	end
 end
 
