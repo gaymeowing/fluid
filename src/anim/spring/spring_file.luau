@@ -7,6 +7,9 @@ local oklab = require("../../utils/oklab")
 local read = require("../../utils/read")
 local types = require("../../reactive/types")
 
+local SLEEP_VELOCITY = 1e-3
+local SLEEP_DISTANCE = 1e-5
+
 type AnimatableDataTypeEnum = "color" | "vector" | "udim" | "udim2" | "number"
 type AnimatableDataType = Color3 | vector | UDim | UDim2 | number
 
@@ -82,8 +85,25 @@ local function unpack_type(
 	return error("unreachable")
 end
 
+local function subtract(a: { number }, b: { number })
+	local c = table.clone(a)
+	for idx, value in c do
+		c[idx] = value + b[idx]
+	end
+	return c
+end
+
+local function magnitude(a: { number })
+	local d = 0
+	for idx, value in a do
+		d += value ^ 2
+	end
+	return d
+end
+
 local function step_spring<T>(state: SpringState, delta_time: number)
 	local pos_pos, pos_vel, vel_pos, vel_vel = coefficients(delta_time, state.damping, state.speed)
+	local low_velocity = true
 
 	-- iterate and solve the spring for each value in our SpringValue
 	for i = 1, state.elements do
@@ -105,6 +125,18 @@ local function step_spring<T>(state: SpringState, delta_time: number)
 
 		state.position[i] = next_position
 		state.velocity[i] = next_velocity
+
+		if next_velocity > SLEEP_VELOCITY then
+			low_velocity = false
+		end
+	end
+
+	if low_velocity and magnitude(subtract(state.position, state.target)) < SLEEP_DISTANCE then
+		for i = 1, state.elements do
+			state.position[i] = state.target[i]
+			state.velocity[i] = 0
+		end
+		active_springs[state] = nil
 	end
 
 	state.unpacked_value = unpack_type(state.datatype, state.position)
