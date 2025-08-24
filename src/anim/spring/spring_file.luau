@@ -88,7 +88,7 @@ end
 local function subtract(a: { number }, b: { number })
 	local c = table.clone(a)
 	for idx, value in c do
-		c[idx] = value + b[idx]
+		c[idx] = value - b[idx]
 	end
 	return c
 end
@@ -148,20 +148,8 @@ function spring_file.create<T>(
 	input: types.UsedAs<T>,
 	speed: number,
 	damping: number
-): (T, (SpringControls<T>) -> ())
+): (() -> T, (SpringControls<T>) -> ())
 	-- initialize spring state early so we can reference it in the effect for the output node
-	local spring_state: SpringState
-
-	local function on_update()
-		local input_as_value = read(input)
-
-		local datatype, array = pack_type(input_as_value)
-		assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
-
-		spring_state.target = array
-
-		return nil
-	end
 
 	local output = graph.create_source_node(read(input))
 
@@ -170,7 +158,7 @@ function spring_file.create<T>(
 
 	local starting_value_string, starting_value = pack_type(call.value :: any)
 
-	spring_state = {
+	local spring_state: SpringState = {
 		position = starting_value,
 		velocity = table.create(#starting_value, 0),
 		target = starting_value,
@@ -184,8 +172,19 @@ function spring_file.create<T>(
 		unpacked_value = call.value :: any,
 	}
 
-	-- need luau feature: bounded generics
-	active_springs[spring_state] = output :: any
+	local function on_update()
+		local input_as_value = read(input)
+
+		local datatype, array = pack_type(input_as_value)
+		assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
+
+		spring_state.target = array
+
+		-- need luau feature: bounded generics
+		active_springs[spring_state] = output :: any
+
+		return nil
+	end
 
 	-- set up the dependency
 	local input_node = graph.create_reactive_node(
@@ -204,17 +203,20 @@ function spring_file.create<T>(
 		on_update()
 
 		if controls.position then
-			local _datatype, array = pack_type(controls.position)
+			local datatype, array = pack_type(controls.position)
+			assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
 			spring_state.position = array
 		end
 
 		if controls.velocity then
-			local _datatype, array = pack_type(controls.velocity)
+			local datatype, array = pack_type(controls.velocity)
+			assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
 			spring_state.velocity = array
 		end
 
 		if controls.impulse then
-			local _datatype, array = pack_type(controls.impulse)
+			local datatype, array = pack_type(controls.impulse)
+			assert(datatype == spring_state.datatype, "Can't switch the data types of a spring")
 			for i = 1, #array do
 				spring_state.velocity[i] += array[i]
 			end
