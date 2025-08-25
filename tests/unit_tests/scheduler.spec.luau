@@ -29,16 +29,26 @@ local function wrap_root(fn: () -> ())
 end
 
 TEST("scheduler stepping", function()
-	CASE("1 second delta time")
 	do
+		CASE("1 second delta time")
 		table.clear(scheduler.connections)
 		local counted_seconds = 0
 
-		scheduler.on_render(function(delta_time)
+		local function func(delta_time: number)
 			counted_seconds += delta_time
-		end)
+		end
+		local disconnect = scheduler.on_render(func)
 
+		CHECK(scheduler.connections[1] == func)
 		CHECK(counted_seconds == 0)
+		render_event:fire(1)
+
+		CHECK(counted_seconds == 1)
+
+		CASE("check disconnected")
+
+		disconnect()
+		CHECK(scheduler.connections[1] == nil)
 		render_event:fire(1)
 		CHECK(counted_seconds == 1)
 	end
@@ -56,7 +66,8 @@ TEST(
 				counted_seconds += delta_time
 			end)
 
-			local value = fluid.interval(function()
+			local value = fluid.interval(function(dt)
+				CHECK(dt == 1 or dt == 0)
 				return counted_seconds
 			end)
 
@@ -131,6 +142,175 @@ TEST(
 				render_event:fire(3)
 				CHECK(spring() == target)
 			end
+		end
+	end)
+)
+
+TEST(
+	"interval",
+	wrap_root(function()
+		do
+			CASE("go active")
+
+			local interval_run_time = 0
+			local destroy = fluid.root(function()
+				fluid.interval(function(dt)
+					CHECK(dt == 0)
+					interval_run_time += 1
+					return 1
+				end)
+			end)
+
+			CHECK(interval_run_time == 1)
+			render_event:fire(0)
+			CHECK(interval_run_time == 2)
+
+			CASE("cleanup")
+
+			destroy()
+
+			render_event:fire(0)
+			render_event:fire(0)
+			render_event:fire(0)
+
+			CHECK(interval_run_time == 2)
+		end
+
+		do
+			CASE("does not trigger while inactive")
+
+			table.clear(scheduler.connections)
+
+			local is_active = fluid.source(false)
+			local interval_run_time = 0
+			local destroy = fluid.root(function()
+				fluid.effect(function()
+					if is_active() then
+						fluid.interval(function(dt)
+							CHECK(dt == 0)
+							interval_run_time += 1
+							return 1
+						end)
+					end
+				end)
+			end)
+
+			CHECK(interval_run_time == 0)
+			render_event:fire(0)
+			CHECK(interval_run_time == 0)
+			CHECK(scheduler.connections[1] == nil)
+
+			CASE("go active")
+
+			is_active(true)
+			CHECK(interval_run_time == 1)
+			CHECK(scheduler.connections[1] ~= nil)
+			render_event:fire(0)
+			CHECK(interval_run_time == 2)
+
+			CASE("go inactive")
+
+			is_active(false)
+			CHECK(interval_run_time == 2)
+			render_event:fire(0)
+			CHECK(interval_run_time == 2)
+
+			CASE("go active again")
+
+			is_active(true)
+			CHECK(scheduler.connections[1] ~= nil)
+			CHECK(interval_run_time == 3)
+
+			CASE("cleanup")
+
+			destroy()
+			CHECK(interval_run_time == 3)
+			render_event:fire(0)
+			CHECK(interval_run_time == 3)
+			CHECK(scheduler.connections[1] == nil)
+		end
+
+		do
+			CASE("interval with hz paramater, should always output hz")
+			table.clear(scheduler.connections)
+
+			local HZ = 100
+			local dt = 0
+			fluid.interval(function(a)
+				dt = a
+				return 0
+			end, HZ)
+
+			CHECK(dt == (1 / HZ))
+
+			CASE("other runs")
+
+			for i = 1, 4 do
+				render_event:fire(i)
+				CHECK(dt == (1 / HZ))
+			end
+		end
+
+		do
+			CASE("interval with no 'hz' paramater, should start with 0, and become delta_time")
+			table.clear(scheduler.connections)
+
+			local dt = -1
+			fluid.interval(function(a)
+				dt = a
+				return 0
+			end)
+
+			CHECK(dt == 0)
+
+			CASE("other runs")
+
+			for i = 1, 4 do
+				render_event:fire(i)
+				CHECK(dt == i)
+			end
+		end
+
+		do
+			CASE("interval in async")
+			table.clear(scheduler.connections)
+
+			local num = fluid.source(0)
+
+			local counter = 0
+			local value: () -> ...any
+			local destroy = fluid.root(function()
+				value = fluid.async(function()
+					num()
+
+					fluid.interval(function()
+						counter += 1
+						return 0
+					end)
+					coroutine.yield()
+					return 0
+				end)
+			end)
+
+			value()
+			CHECK(counter == 1)
+			CHECK(scheduler.connections[1] ~= nil)
+			CHECK(scheduler.connections[2] == nil)
+
+			CASE("previous interval should cleaned up")
+
+			num(1)
+			value()
+
+			CHECK(counter == 2)
+			CHECK(scheduler.connections[1] ~= nil)
+			CHECK(scheduler.connections[2] == nil) -- if two interval was active then 'interval' didn't get cleaned up
+
+			CASE("cleanup")
+			destroy()
+			CHECK(counter == 2)
+			CHECK(scheduler.connections[1] == nil)
+			CHECK(scheduler.connections[2] == nil)
 		end
 	end)
 )
