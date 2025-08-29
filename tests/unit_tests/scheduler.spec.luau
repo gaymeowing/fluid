@@ -34,12 +34,12 @@ TEST("scheduler stepping", function()
 		table.clear(scheduler.connections)
 		local counted_seconds = 0
 
-		local function func(delta_time: number)
+		local function on_render_callback(delta_time: number)
 			counted_seconds += delta_time
 		end
-		local disconnect = scheduler.on_render(func)
+		local disconnect = scheduler.on_render(on_render_callback)
 
-		CHECK(scheduler.connections[1] == func)
+		CHECK(scheduler.connections[1] == on_render_callback)
 		CHECK(counted_seconds == 0)
 		render_event:fire(1)
 
@@ -146,173 +146,118 @@ TEST(
 	end)
 )
 
-TEST(
-	"interval",
-	wrap_root(function()
-		do
-			CASE("go active")
+TEST("interval", function()
+	do
+		CASE("go active")
 
-			local interval_run_time = 0
-			local destroy = fluid.root(function()
-				fluid.interval(function(dt)
-					CHECK(dt == 0)
-					interval_run_time += 1
-					return 1
-				end)
+		local interval_run_time = 0
+		local destroy = fluid.root(function()
+			fluid.interval(function(dt)
+				CHECK(dt == 0)
+				interval_run_time += 1
+				return 1
 			end)
+		end)
 
-			CHECK(interval_run_time == 1)
-			render_event:fire(0)
-			CHECK(interval_run_time == 2)
+		CHECK(interval_run_time == 1)
+		render_event:fire(0)
+		CHECK(interval_run_time == 2)
 
-			CASE("cleanup")
+		CASE("cleanup")
 
-			destroy()
+		destroy()
 
-			render_event:fire(0)
-			render_event:fire(0)
-			render_event:fire(0)
+		render_event:fire(0)
+		render_event:fire(0)
+		render_event:fire(0)
 
-			CHECK(interval_run_time == 2)
-		end
+		CHECK(interval_run_time == 2)
+	end
 
-		do
-			CASE("does not trigger while inactive")
+	do
+		CASE("interval with 'hz' specified")
+		table.clear(scheduler.connections)
 
-			table.clear(scheduler.connections)
-
-			local is_active = fluid.source(false)
-			local interval_run_time = 0
-			local destroy = fluid.root(function()
-				fluid.effect(function()
-					if is_active() then
-						fluid.interval(function(dt)
-							CHECK(dt == 0)
-							interval_run_time += 1
-							return 1
-						end)
-					end
-				end)
-			end)
-
-			CHECK(interval_run_time == 0)
-			render_event:fire(0)
-			CHECK(interval_run_time == 0)
-			CHECK(scheduler.connections[1] == nil)
-
-			CASE("go active")
-
-			is_active(true)
-			CHECK(interval_run_time == 1)
-			CHECK(scheduler.connections[1] ~= nil)
-			render_event:fire(0)
-			CHECK(interval_run_time == 2)
-
-			CASE("go inactive")
-
-			is_active(false)
-			CHECK(interval_run_time == 2)
-			render_event:fire(0)
-			CHECK(interval_run_time == 2)
-
-			CASE("go active again")
-
-			is_active(true)
-			CHECK(scheduler.connections[1] ~= nil)
-			CHECK(interval_run_time == 3)
-
-			CASE("cleanup")
-
-			destroy()
-			CHECK(interval_run_time == 3)
-			render_event:fire(0)
-			CHECK(interval_run_time == 3)
-			CHECK(scheduler.connections[1] == nil)
-		end
-
-		do
-			CASE("interval with hz paramater, should always output hz")
-			table.clear(scheduler.connections)
-
-			local HZ = 100
-			local dt = 0
+		local dt = 0
+		local destroy = fluid.root(function()
 			fluid.interval(function(a)
 				dt = a
 				return 0
-			end, HZ)
+			end, 100)
+		end)
 
-			CHECK(dt == (1 / HZ))
+		CHECK(dt == 0)
 
-			CASE("other runs")
+		CASE("other with 'hz' specified runs")
 
-			for i = 1, 4 do
-				render_event:fire(i)
-				CHECK(dt == (1 / HZ))
-			end
+		for i = 1, 4 do
+			render_event:fire(i)
+			CHECK(dt == i)
 		end
 
-		do
-			CASE("interval with no 'hz' paramater, should start with 0, and become delta_time")
-			table.clear(scheduler.connections)
+		destroy()
+	end
 
-			local dt = -1
+	do
+		CASE("interval with no 'hz' specified")
+		table.clear(scheduler.connections)
+
+		local dt = 0
+		local destroy = fluid.root(function()
 			fluid.interval(function(a)
 				dt = a
 				return 0
 			end)
+		end)
 
-			CHECK(dt == 0)
+		CHECK(dt == 0)
 
-			CASE("other runs")
+		CASE("other no 'hz' specified runs")
 
-			for i = 1, 4 do
-				render_event:fire(i)
-				CHECK(dt == i)
-			end
+		for i = 1, 4 do
+			render_event:fire(i)
+			CHECK(dt == i)
 		end
 
-		do
-			CASE("interval in async")
-			table.clear(scheduler.connections)
+		destroy()
+	end
 
-			local num = fluid.source(0)
+	do
+		CASE("should be blocked if last evaluation to hz is small")
+		local evaulation_times = 0
 
-			local counter = 0
-			local value: () -> ...any
-			local destroy = fluid.root(function()
-				value = fluid.async(function()
-					num()
+		local destroy = fluid.root(function()
+			fluid.interval(function(a)
+				evaulation_times += 1
+				return 0
+			end, 1)
+		end)
 
-					fluid.interval(function()
-						counter += 1
-						return 0
-					end)
-					coroutine.yield()
-					return 0
-				end)
-			end)
+		CHECK(evaulation_times == 1)
 
-			value()
-			CHECK(counter == 1)
-			CHECK(scheduler.connections[1] ~= nil)
-			CHECK(scheduler.connections[2] == nil)
+		render_event:fire(0)
 
-			CASE("previous interval should cleaned up")
+		CHECK(evaulation_times == 1)
 
-			num(1)
-			value()
+		render_event:fire(0.5)
+		CHECK(evaulation_times == 1)
 
-			CHECK(counter == 2)
-			CHECK(scheduler.connections[1] ~= nil)
-			CHECK(scheduler.connections[2] == nil) -- if two interval was active then 'interval' didn't get cleaned up
+		CASE("should pass if last evaulation is big enough")
 
-			CASE("cleanup")
-			destroy()
-			CHECK(counter == 2)
-			CHECK(scheduler.connections[1] == nil)
-			CHECK(scheduler.connections[2] == nil)
-		end
-	end)
-)
+		render_event:fire(0.5 + 0.001)
+		CHECK(evaulation_times == 2)
+
+		CASE("micro last evaulations")
+
+		render_event:fire(0.999)
+		CHECK(evaulation_times == 2)
+		render_event:fire(0.001)
+		CHECK(evaulation_times == 2)
+		render_event:fire(0.001)
+		CHECK(evaulation_times == 3)
+
+		destroy()
+	end
+end)
 
 return nil
