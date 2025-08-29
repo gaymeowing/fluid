@@ -258,6 +258,32 @@ TEST("interval", function()
 
 		destroy()
 	end
+
+	do
+		CASE("should return the time since last evaulation")
+
+		local dt = -1
+		local destroy = fluid.root(function()
+			fluid.interval(function(a)
+				dt = a
+				return 0
+			end, 1)
+		end)
+
+		CHECK(dt == 0)
+		render_event:fire(0.6)
+		CHECK(dt == 0)
+		render_event:fire(0.6)
+
+		CHECK(dt == (0.6 * 2)) -- should be 1.2
+
+		CASE("should reset the evaluation time even though we have passed the interval rate")
+
+		render_event:fire(1.1)
+		CHECK(dt == 1.1)
+
+		destroy()
+	end
 end)
 
 return nil
