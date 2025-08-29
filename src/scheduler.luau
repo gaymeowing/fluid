@@ -14,6 +14,10 @@ function scheduler.step(delta_time: number)
 	end
 end
 
+function scheduler.defer(fn: () -> ())
+	return task.defer(fn)
+end
+
 function scheduler.on_render(fn: RenderCallback)
 	table.insert(connections, fn)
 end

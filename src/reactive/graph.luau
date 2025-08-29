@@ -1,5 +1,6 @@
 local logging = require("../logging")
 local result = require("../result")
+local scheduler = require("../scheduler")
 local types = require("./types")
 
 export type SourceNode<T> = {
@@ -57,6 +58,7 @@ export type ReactiveNode<T> = {
 
 export type Node<T> = ReactiveNode<T> | StableNode<T>
 
+local graph
 local pending_eval: { ReactiveNode<unknown> } = {}
 local processing_node: { [thread]: Node<unknown> } = {}
 local deferred_nodes = {}
@@ -95,12 +97,22 @@ local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): r
 	return call
 end
 
+local deferred_thread: thread?
 local function defer_node<T>(node: ReactiveNode<T>)
 	if node.state == "dirty" then
 		return
 	end
 	node.state = "dirty" :: any
 	table.insert(deferred_nodes, node)
+
+	if deferred_thread == nil then
+		deferred_thread = scheduler.defer(function()
+			assert(graph)
+
+			graph.flush_deferred_nodes()
+			deferred_thread = nil
+		end)
+	end
 end
 
 local function push_dependency<T>(node: SourceNode<T> | ReactiveNode<T>)
@@ -311,7 +323,7 @@ local function invalidate<T>(node: SourceNode<T>)
 	table.clear(pending_eval)
 end
 
-local graph = {
+graph = {
 	-- re-exports of local utilities
 	get_scope = get_scope,
 	set_scope = set_scope,
