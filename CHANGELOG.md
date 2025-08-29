@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixes
+
+- Fix deferred nodes, now deferring using `task.defer`
+
+## 0.5.0
+
+### Added
+
+- Add number springs by @alicesaidhi in #14
+- Add switch by @alicesaidhi in #17
+- Add controls for spring by @alicesaidhi in #19
+- Allow `cleanup` to disconnect connections, instances and objects with a destroy function by @alicesaidhi in #18
+- Implement rbxm build workflow by @alicesaidhi in #21
+
+### Changed
+
+- Add spring sleeping by @alicesaidhi in #22
+
+### Fixes
+
+- Fix source type by @alicesaidhi in #15
+- Fix for_values by @dipsplitter in #16
+- Adjust type for show and allow static values for show by @alicesaidhi in #20
+
+## 0.4.0
+
+### Added
+
+- Add `fluid.bind` by @alicesaidhi in #12
+- Add `deferred` by @alicesaidhi in #13
+
 ## 0.3.2
 
 ### Changed
