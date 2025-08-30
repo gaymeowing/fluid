@@ -14,8 +14,16 @@ function scheduler.step(delta_time: number)
 	end
 end
 
-function scheduler.defer(fn: () -> ())
-	return task.defer(fn)
+function scheduler.defer<T...>(fn: (T...) -> (), ...: T...)
+	return task.defer(fn, ...)
+end
+
+function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...)
+	return task.delay(n, fn, ...)
+end
+
+function scheduler.cancel(thread: thread)
+	return task.cancel(thread)
 end
 
 function scheduler.on_render(fn: RenderCallback)

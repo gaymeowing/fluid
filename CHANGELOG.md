@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `fluid.show_delay` and `fluid.switch_delay` by @alicesaidhi in #27.
+- Add support for delaying destruction for `fluid.for_values` and `fluid.for_keys` on a per value level by @alicesaidhi in #27.
 - Add delta time to `interval` callback @stenimated in #24
 
 ###  Changed
@@ -20,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix deferred nodes, now deferring using `task.defer`
 - Fix spring sleeping and spring types by @stenimated in #24
 - Fix `interval` cleanup by @stenimated in #25
+
+### Removed
+
+- Remove last remaining code handling delayed nodes
 
 ## 0.5.0
 
