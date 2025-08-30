@@ -4,7 +4,7 @@ local scheduler = require("../scheduler")
 local function interval<T>(func: (dt: number) -> T, hz: number?)
 	local scope = graph.assert_stable_parent()
 
-	local internal_node = graph.create_source_node(func(0))
+	local node = graph.create_source_node(func(0))
 	local last_eval = 0
 
 	local function on_render(dt: number)
@@ -17,7 +17,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 			last_eval = 0
 		end
 
-		graph.update_source_node(internal_node, func(dt))
+		graph.update_source_node(node, func(dt))
 	end
 
 	local disconnect = scheduler.on_render(on_render)
@@ -25,8 +25,8 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 	graph.push_cleanup(scope, disconnect)
 
 	return function()
-		graph.push_dependency(internal_node)
-		return internal_node.cached_value
+		graph.push_dependency(node)
+		return node.cached_value
 	end
 end
 
