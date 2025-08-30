@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add `fluid.show_delay` and `fluid.switch_delay` by @alicesaidhi in #27.
+- Add support for delaying destruction for `fluid.for_values` and `fluid.for_keys` on a per value level by @alicesaidhi in #27.
+
 ### Fixes
 
 - Fix deferred nodes, now deferring using `task.defer`
+
+### Removed
+
+- Remove last remaining code handling delayed nodes
 
 ## 0.5.0
 
