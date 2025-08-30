@@ -28,6 +28,12 @@ end
 
 function scheduler.on_render(fn: RenderCallback)
 	table.insert(connections, fn)
+	return function()
+		local index = table.find(connections, fn)
+		if index then
+			table.remove(connections, index)
+		end
+	end
 end
 
 return scheduler
