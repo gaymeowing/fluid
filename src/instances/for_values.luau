@@ -42,15 +42,6 @@ local function values<V, KI, KO>(
 		graph.update_source_node(useless_dependency, useless_dependency.cached_value + 1)
 	end
 
-	local function activate_node(value: V)
-		local active_node = output_active[value]
-		if active_node == nil or destruction_threads[value] then
-			return
-		end
-
-		graph.update_source_node(active_node, true)
-	end
-
 	local function update(): { KO }
 		local input: { [KI]: V } = read(input)
 		graph.push_dependency(useless_dependency)
@@ -92,9 +83,7 @@ local function values<V, KI, KO>(
 			else -- new
 				local key_node = graph.create_source_node(key)
 				local output_node = graph.create_stable_node(child_parent)
-				local active_node = graph.create_source_node(false)
-
-				scheduler.defer(activate_node, key)
+				local active_node = graph.create_source_node(true)
 
 				local function read_key(): KI
 					graph.push_dependency(key_node)

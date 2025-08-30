@@ -41,15 +41,6 @@ local function indexes<K, VI, VO>(
 		graph.update_source_node(useless_dependency, useless_dependency.cached_value + 1)
 	end
 
-	local function activate_node(key: K)
-		local active_node = output_active[key]
-		if active_node == nil or destruction_threads[key] then
-			return
-		end
-
-		graph.update_source_node(active_node, true)
-	end
-
 	local function update(): { VO }
 		local input: { [K]: VI } = read(input)
 		graph.push_dependency(useless_dependency)
@@ -85,9 +76,7 @@ local function indexes<K, VI, VO>(
 			else -- new
 				local value_node = graph.create_source_node(value)
 				local output_node = graph.create_stable_node(child_parent)
-				local active_node = graph.create_source_node(false)
-
-				scheduler.defer(activate_node, key)
+				local active_node = graph.create_source_node(true)
 
 				local function read_value(): VI
 					graph.push_dependency(value_node)
