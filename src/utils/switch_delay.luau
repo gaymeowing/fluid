@@ -84,7 +84,7 @@ local function switch<Key, Result>(condition: () -> Key)
 
 			-- otherwise, create a new node
 			local node = graph.create_stable_node(parent_node)
-			local active = graph.create_source_node(false)
+			local active = graph.create_source_node(true)
 
 			local function read_active()
 				graph.push_dependency(active)
