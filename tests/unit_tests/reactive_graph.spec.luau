@@ -504,6 +504,7 @@ TEST(
 		local effect = fluid.effect
 		local for_keys = fluid.for_keys
 		local cleanup = fluid.cleanup
+		local root = fluid.root
 
 		do
 			CASE("use source")
@@ -683,6 +684,46 @@ TEST(
 			CHECK(updated[3] == 2)
 			CHECK(updated[4] == 2)
 		end
+
+		do
+			CASE("remove after delay")
+			local items = source({ 1 })
+
+			local data = for_keys(items, function(value)
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			task.wait()
+			task.wait()
+			CHECK(#data() == 0)
+		end
+
+		do
+			CASE("re-activate inactive node")
+			local items = source({ 1 })
+			local updates = 0
+
+			local data = for_keys(items, function(value)
+				updates += 1
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+			task.wait()
+			items({ 1 }) -- should cancel thread
+			-- we need to evaluate for_keys again so it can cancel the thread.
+			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
+			CHECK(#data() == 1)
+			task.wait()
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+		end
 	end)
 )
 
@@ -844,6 +885,46 @@ TEST(
 			local n1 = graph.get_scope()
 
 			CHECK(n0 == n1)
+		end
+
+		do
+			CASE("remove after delay")
+			local items = source({ 1 })
+
+			local data = for_values(items, function(value)
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			task.wait()
+			task.wait()
+			CHECK(#data() == 0)
+		end
+
+		do
+			CASE("re-activate inactive node")
+			local items = source({ 1 })
+			local updates = 0
+
+			local data = for_values(items, function(value)
+				updates += 1
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+			task.wait()
+			items({ 1 }) -- should cancel thread
+			-- we need to evaluate for_keys again so it can cancel the thread.
+			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
+			CHECK(#data() == 1)
+			task.wait()
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
 		end
 	end)
 )

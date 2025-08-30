@@ -22,6 +22,10 @@ function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...)
 	return task.delay(n, fn, ...)
 end
 
+function scheduler.cancel(thread: thread)
+	return task.cancel(thread)
+end
+
 function scheduler.on_render(fn: RenderCallback)
 	table.insert(connections, fn)
 end
