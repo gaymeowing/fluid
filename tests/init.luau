@@ -23,11 +23,9 @@ function tests.unit_tests()
 end
 
 do -- setting roblox globals
-
 	Color3 = roblox.Color3
 	CFrame = roblox.CFrame
 	UDim2 = roblox.UDim2
-
 end
 
 return tests
