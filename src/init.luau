@@ -10,6 +10,8 @@ local effect = require("@self/reactive/effect")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
+local hydrate = require("@self/instances/hydrate")
+local instance_types = require("@self/instances/types")
 local interval = require("@self/utils/interval")
 local lerp = require("@self/anim/lerp")
 local mount = require("@self/instances/mount")
@@ -25,8 +27,6 @@ local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
-local hydrate = require("@self/instances/hydrate")
-local instance_types = require("@self/instances/types")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>

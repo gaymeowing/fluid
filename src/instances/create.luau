@@ -1,5 +1,5 @@
-local types = require("./types")
 local bind = require("./bind")
+local types = require("./types")
 
 local function try_create_instance(class_name: string): Instance
 	local success, call_result = pcall(Instance.new, class_name)
