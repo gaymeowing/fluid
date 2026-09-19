@@ -1,5 +1,100 @@
 local action = require("./action")
 
+export type Instances = {
+	PyramidHandleAdornment: PyramidHandleAdornment,
+	AudioChannelSplitter: AudioChannelSplitter,
+	AudioPitchShifter: AudioPitchShifter,
+	AudioDeviceOutput: AudioDeviceOutput,
+	AudioChannelMixer: AudioChannelMixer,
+	AudioTextToSpeech: AudioTextToSpeech,
+	AudioDeviceInput: AudioDeviceInput,
+	AudioDistortion: AudioDistortion,
+	AudioCompressor: AudioCompressor,
+	AudioEqualizer: AudioEqualizer,
+	AudioAnalyzer: AudioAnalyzer,
+	AudioListener: AudioListener,
+	AudioRecorder: AudioRecorder,
+	AudioLimiter: AudioLimiter,
+	AudioFlanger: AudioFlanger,
+	AudioEmitter: AudioEmitter,
+	AudioPlayer: AudioPlayer,
+	AudioReverb: AudioReverb,
+	AudioFilter: AudioFilter,
+	ArcHandles: ArcHandles,
+	AudioFader: AudioFader,
+	AudioEcho: AudioEcho,
+	AdGui: AdGui,
+	BoxHandleAdornment: BoxHandleAdornment,
+	BillboardGui: BillboardGui,
+	BlurEffect: BlurEffect,
+	CylinderHandleAdornment: CylinderHandleAdornment,
+	ConeHandleAdornment: ConeHandleAdornment,
+	CanvasGroup: CanvasGroup,
+	Camera: Camera,
+	DialogChoice: DialogChoice,
+	DragDetector: DragDetector,
+	Dialog: Dialog,
+	Folder: Folder,
+	Frame: Frame,
+	Highlight: Highlight,
+	Handles: Handles,
+	ImageHandLeAdornment: ImageHandleAdornment,
+	ImageButton: ImageButton,
+	ImageLabel: ImageLabel,
+	LineHandleAdornment: LineHandleAdornment,
+	ProximityPrompt: ProximityPrompt,
+	Path2D: Path2D,
+	Part: Part,
+	SphereHandLeAdornment: SphereHandleAdornment,
+	SelectionSphere: SelectionSphere,
+	ScrollingFrame: ScrollingFrame,
+	SelectionBox: SelectionBox,
+	StyleDerive: StyleDerive,
+	StyleQuery: StyleQuery,
+	SurfaceGui: SurfaceGui,
+	StyleSheet: StyleSheet,
+	SoundGroup: SoundGroup,
+	StyleLink: StyleLink,
+	ScreenGui: ScreenGui,
+	StyleBase: StyleBase,
+	StyleRule: StyleRule,
+	Sound: Sound,
+	TextButton: TextButton,
+	TextLabel: TextLabel,
+	TextBox: TextBox,
+	UIAspectRatioConstraint: UIAspectRatioConstraint,
+	UITextSizeConstraint: UITextSizeConstraint,
+	UISizeConstraint: UISizeConstraint,
+	UIDragDetector: UIDragDetector,
+	UITableLayout: UITableLayout,
+	UIPageLayout: UIPageLayout,
+	UIGridLayout: UIGridLayout,
+	UIListLayout: UIListLayout,
+	UIGradient: UIGradient,
+	UIFlexItem: UIFlexItem,
+	UIPadding: UIPadding,
+	UIStroke: UIStroke,
+	UICorner: UICorner,
+	UIShadow: UIShadow,
+	UIScale: UIScale,
+	ViewportFrame: ViewportFrame,
+	VideoDisplay: VideoDisplay,
+	VideoFrame: VideoFrame,
+	WireframeHandleAdornment: WireframeHandleAdornment,
+	WorldModel: WorldModel,
+	Wire: Wire,
+}
+
+type instance = Instance
+
+export type function GetInstance(class_name: type, instances: type): type
+	if not class_name:is("singleton") then
+		return instance
+	end
+
+	return instances:readproperty(class_name) or instance
+end
+
 type UnknownConnectCallback = (...any) -> ()
 
 type Signal = RBXScriptSignal
@@ -49,18 +144,19 @@ type function is_signal(v: type): type?
 	return nil
 end
 
-type instance = Instance
-
 type Action = action.Identity
 
 export type function PropertiesFor(object: type): type
-	if not object:issubtypeof(instance) then
+	if object.tag == "singleton" then
+		object = GetInstance(object, Instances)
+	elseif not object:issubtypeof(instance) then
 		error("Cannot get properties of a non Instance type")
 	end
+
 	local head_table = {}
 	local args_table = { head = head_table }
 	local properties = types.newtable()
-	local current = object
+	local current = object :: type
 	local empty_table = {}
 
 	local read_only_properties = table.freeze({
@@ -75,7 +171,7 @@ export type function PropertiesFor(object: type): type
 				continue
 			end
 
-			local value_read = value.read
+			local value_read = value.read :: type
 			local callback = is_signal(value_read)
 
 			if callback then

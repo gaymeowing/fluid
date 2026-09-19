@@ -25,11 +25,13 @@ local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+local hydrate = require("@self/instances/hydrate")
+local instance_types = require("@self/instances/types")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
-export type PropertiesFor<T> = create.PropertiesFor<T>
+export type PropertiesFor<T> = instance_types.PropertiesFor<T>
 
 local scheduler_thread: thread? = nil
 
@@ -59,6 +61,7 @@ end
 
 local fluid = {}
 
+fluid.hydrate = hydrate
 fluid.create = create
 fluid.mount = mount
 fluid.tags = tags
