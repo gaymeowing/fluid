@@ -197,6 +197,7 @@ export type function PropertiesFor(object: type): type
 			elseif value.write then
 				head_table[1] = value_read
 
+				--stylua: ignore
 				properties[property] = types.optional(
 					types.unionof(types.newfunction(nil, args_table :: any), value.write)
 				)
