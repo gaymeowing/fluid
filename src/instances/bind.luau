@@ -1,7 +1,7 @@
-local reactive_types = require("../reactive/types")
+local action = require("./action")
 local graph = require("../reactive/graph")
 local instance_types = require("./types")
-local action = require("./action")
+local reactive_types = require("../reactive/types")
 
 local function set_property(inst: Instance, property: string, value: any)
 	(inst :: any)[property] = value
