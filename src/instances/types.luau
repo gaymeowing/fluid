@@ -209,17 +209,18 @@ export type function PropertiesFor(object: type): type
 
 	properties = types.newtable(properties)
 
+	-- TODO: Use a read only indexer when released to properly accept children which are subtypes of `Instance`
 	-- Functions returning a child can return an array of children, or alike functions, nested to any level
 	local function_returns_child = types.newfunction()
 	local child_only_union = types.unionof(function_returns_child, instance)
 
 	local nested_table_or_function_or_child = types.newtable()
 	local nested_child_union = types.unionof(child_only_union, nested_table_or_function_or_child)
-	nested_table_or_function_or_child:setreadindexer(types.number, nested_child_union)
+	nested_table_or_function_or_child:setindexer(types.number, nested_child_union)
 	function_returns_child:setreturns({ nested_child_union })
 
 	local full_union = types.unionof(child_only_union, Action, properties)
-	properties:setreadindexer(types.number, types.optional(full_union))
+	properties:setindexer(types.number, types.optional(full_union))
 
 	return properties
 end
