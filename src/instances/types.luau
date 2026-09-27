@@ -121,7 +121,7 @@ type function get_connect(v: type): type?
 	return nil
 end
 
-type function is_signal(v: type): type?
+export type function is_signal(v: type): type?
 	if v == Signal and v.tag == "extern" then
 		return UnknownConnectCallback
 	-- luau lsp types RBXScriptSignals as tables
@@ -149,24 +149,37 @@ end
 
 type Action = action.Identity
 
+export type function get_read_only_instance_properties(): { type }
+	return table.freeze({
+		types.singleton("RobloxLocked"),
+		types.singleton("ClassName"),
+		types.singleton("UniqueId"),
+	})
+end
+
 export type function PropertiesFor(object: type): type
+	-- support for fake generic constraints ie types like T & Instance
+	if object.tag == "intersection" then
+		local components = object:components()
+
+		if #components == 2 then
+			object = components[1]
+		else
+			error("cannot provide an intersection type with more than 2 components to PropertiesFor")
+		end
+	end
+
 	if object.tag == "singleton" then
 		object = GetInstance(object, Instances)
 	elseif not object:issubtypeof(instance) then
 		error("Cannot get properties of a non Instance type")
 	end
 
+	local read_only_properties = get_read_only_instance_properties()
 	local head_table = {}
 	local args_table = { head = head_table }
-	local properties = types.newtable()
+	local properties = {} :: { [type]: type }
 	local current = object :: type
-	local empty_table = {}
-
-	local read_only_properties = table.freeze({
-		types.singleton("RobloxLocked"),
-		types.singleton("ClassName"),
-		types.singleton("UniqueId"),
-	})
 
 	while current do
 		for property, value in current:properties() do
@@ -178,17 +191,14 @@ export type function PropertiesFor(object: type): type
 			local callback = is_signal(value_read)
 
 			if callback then
-				properties:setproperty(property, types.optional(callback))
+				properties[property] = types.optional(callback)
 			elseif value_read.tag == "function" or value_read.tag == "intersection" then
 				continue
 			elseif value.write then
 				head_table[1] = value_read
 
-				properties:setproperty(
-					property,
-					types.optional(
-						types.unionof(types.newfunction(empty_table :: any, args_table :: any), value.write)
-					)
+				properties[property] = types.optional(
+					types.unionof(types.newfunction(nil, args_table :: any), value.write)
 				)
 			end
 		end
@@ -196,20 +206,19 @@ export type function PropertiesFor(object: type): type
 		current = current:readparent()
 	end
 
+	properties = types.newtable(properties)
+
 	-- Functions returning a child can return an array of children, or alike functions, nested to any level
 	local function_returns_child = types.newfunction()
 	local child_only_union = types.unionof(function_returns_child, instance)
 
-	-- TODO: Use a read only indexer when released to properly accept children which are subtypes of `Instance`
-	-- TODO: Nesting throws a type error, seemingly a solver bug caused whenever the keys are a union instead of direct type
-	-- Happens even with a union between `Instance` and `any`, but disappears when it's just `Instance`
 	local nested_table_or_function_or_child = types.newtable()
 	local nested_child_union = types.unionof(child_only_union, nested_table_or_function_or_child)
-	nested_table_or_function_or_child:setindexer(types.number, nested_child_union)
+	nested_table_or_function_or_child:setreadindexer(types.number, nested_child_union)
 	function_returns_child:setreturns({ nested_child_union })
 
 	local full_union = types.unionof(child_only_union, Action, properties)
-	properties:setindexer(types.number, types.optional(full_union))
+	properties:setreadindexer(types.number, types.optional(full_union))
 
 	return properties
 end
