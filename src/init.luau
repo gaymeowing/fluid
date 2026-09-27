@@ -1,3 +1,4 @@
+local style_sheet = require("@self/instances/style_sheet")
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
@@ -26,6 +27,8 @@ local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+
+export type StyleSheet<Tokens = {}, Tags = {}> = style_sheet.Sheet<Tokens, Tags>
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -60,6 +63,7 @@ end
 
 local fluid = {}
 
+fluid.style_sheet = style_sheet
 fluid.create = create
 fluid.mount = mount
 fluid.tags = tags
