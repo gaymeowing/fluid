@@ -20,6 +20,7 @@ local show = require("@self/utils/show")
 local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
+local style_sheet = require("@self/instances/style_sheet")
 local switch = require("@self/utils/switch")
 local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
@@ -30,6 +31,9 @@ export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
 export type PropertiesFor<T> = create.PropertiesFor<T>
+export type StyleSheet<Tokens, Tags> = style_sheet.Sheet<Tokens, Tags>
+export type StyleProperties<Selector, Tokens> = style_sheet.StyleProperties<Selector, Tokens>
+export type StyleTransitions = style_sheet.Transitions
 
 local scheduler_thread: thread? = nil
 
@@ -64,6 +68,7 @@ fluid.mount = mount
 fluid.tags = tags
 fluid.bind = bind
 fluid.changed = changed
+fluid.style_sheet = style_sheet
 
 -- actions
 fluid.action = action.create
