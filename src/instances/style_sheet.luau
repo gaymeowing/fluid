@@ -6,7 +6,6 @@ local tags = require("../utils/tags")
 
 type Action = action.Identity
 type Instances = instance_types.Instances
--- Do not name anything `StyleSheet` in this file — it late-binds over Roblox's extern.
 type RobloxStyleSheet = StyleSheet
 type RobloxGuiObject = GuiObject
 type RobloxInstance = Instance
@@ -16,7 +15,7 @@ type RobloxStyleQuery = StyleQuery
 
 type RuntimeSheet = { read instance: RobloxStyleSheet }
 
--- `::StyleQuery` pseudo-instances take their conditions as properties, which StyleQuery doesn't declare.
+-- `::StyleQuery` pseudo-instances take their conditions as properties
 type QueryConditions = {
 	AspectRatioRange: NumberRange,
 	MaxSize: Vector2,
@@ -27,7 +26,6 @@ type QueryConditions = {
 	ViewportDisplaySize: Enum.DisplaySize,
 }
 
--- Queries Roblox always provides, named by a condition followed by its value.
 type BuiltInQueries = {
 	PreferredInputKeyboardAndMouse: true,
 	PreferredInputGamepad: true,
@@ -51,7 +49,6 @@ type Props = {
 	[string | number]: PseudoInstance,
 }
 
--- Made by `:pseudo`, styles a pseudo-instance from the array part of a rule.
 export type PseudoInstance = {
 	read selector: string,
 	read props: Props,
@@ -66,7 +63,6 @@ type function VALIDATE_STRINGLETON(s: type, string_type: string): type
 	return s
 end
 
--- Later fields override earlier fields, matching token updates.
 type function Merge(base: type, overrides: type): type
 	local properties = {} :: { [type]: type }
 	local keys = {} :: { [string]: type }
@@ -90,17 +86,13 @@ type function Merge(base: type, overrides: type): type
 	return types.newtable(properties, overrides:indexer() or source:indexer())
 end
 
--- Maps each token type to a union of the "$Name" refs for every token of that type.
--- Equal types aren't the same userdata, so types are keyed by how they print.
 type function TokenRefs(tokens: type): { [string]: type }
 	local refs = {} :: { [string]: type }
-	if not tokens:is("table") then
-		return refs
-	end
 
 	for key, property in tokens:properties() do
 		local token_type = property.read
 		if token_type then
+			-- equal types aren't the same userdata, so types are keyed by what tostring gives for them
 			local type_name = tostring(token_type)
 			local reference = types.singleton("$" .. (key:value() :: string))
 			local existing = refs[type_name]
@@ -108,7 +100,6 @@ type function TokenRefs(tokens: type): { [string]: type }
 		end
 	end
 
-	-- Token tables with an indexer can have any name.
 	local indexer = tokens:indexer()
 	if indexer then
 		refs[tostring(indexer.readresult)] = types.string
@@ -122,8 +113,6 @@ type function StyleValue(value: type, refs: { [string]: type }): type
 	return types.optional(if value_refs then types.unionof(value, value_refs) else value)
 end
 
--- One instance type per comma separated selector: the last compound's `::` pseudo-instance, else its class.
--- Selectors without a known class style GuiObjects.
 type function SelectorInstances(selector: type): { type }
 	if not (selector:is("singleton") and type(selector:value()) == "string") then
 		return { RobloxGuiObject }
@@ -147,7 +136,6 @@ type function SelectorInstances(selector: type): { type }
 	return if #instances > 0 then instances else { RobloxGuiObject }
 end
 
--- Options are `_` prefixed so they can never collide with Roblox property names.
 type function StyleProperties(selector: type, tokens: type, queries: type): type
 	local selector_value = VALIDATE_STRINGLETON(selector, "selector"):value() :: string
 	local read_only_properties = table.freeze({
@@ -156,7 +144,7 @@ type function StyleProperties(selector: type, tokens: type, queries: type): type
 		types.singleton("UniqueId"),
 	})
 
-	-- Every query that `@Name` selectors and `_queries` can use: the built-ins, plus ones added with `:query`.
+	-- every query that `@Name` selectors and `_queries` can use
 	local query_keys = {} :: { [string]: type }
 	local source = BuiltInQueries
 	for i = 1, 2 do
@@ -172,10 +160,10 @@ type function StyleProperties(selector: type, tokens: type, queries: type): type
 		end
 	end
 
-	-- Rules can't reference instances, so Parent and other instance properties are left out.
+	-- rules can't reference instances, so Parent and other instance properties are left out.
 	local instance_value = types.optional(RobloxInstance)
 	local instance_values = {} :: { [string]: boolean }
-	-- Selector lists merge properties by name, intersecting the value types they share.
+	-- selector lists merge properties by name
 	local keys = {} :: { [string]: type }
 	local values = {} :: { [string]: type }
 
@@ -357,10 +345,10 @@ type SheetPrototype = {
 
 export type Sheet<Tokens = {}, Tags = {}, Queries = {}> = setmetatable<SheetData<Tokens, Tags, Queries>, SheetPrototype>
 
-local function create_rule(parent: Instance, selector: string, props: Props)
+local function create_rule(parent: Instance, selector: string, props: Props, name: string?)
 	local rule = Instance.new("StyleRule")
 	rule.Selector = selector
-	rule.Name = selector
+	rule.Name = name or selector
 
 	local priority = props._priority
 	if priority then
@@ -370,16 +358,14 @@ local function create_rule(parent: Instance, selector: string, props: Props)
 
 	local transitions = props._transitions
 	if transitions then
-		local default = transitions._default
-
-		if default then
-			rule:SetDefaultPropertyTransition(default)
-			transitions._default = nil
-		end
-
 		for property, transition in transitions do
-			rule:SetPropertyTransition(property, transition)
+			if property == "_default" then
+				rule:SetDefaultPropertyTransition(transition)
+			else
+				rule:SetPropertyTransition(property, transition)
+			end
 		end
+		props._transitions = nil
 	end
 
 	local queries = props._queries
@@ -390,8 +376,10 @@ local function create_rule(parent: Instance, selector: string, props: Props)
 		props._queries = nil
 	end
 
-	for index, pseudo in ipairs(props :: any) do
-		create_rule(rule, pseudo.selector, pseudo.props)
+	for i = #props, 1, -1 do
+		local pseudo_instance = props[i] :: PseudoInstance
+		create_rule(rule, pseudo_instance.selector, pseudo_instance.props)
+		props[i] = nil
 	end
 
 	rule:SetProperties(props)
@@ -423,14 +411,16 @@ end
 
 function style_sheet_prototype.pseudo(_self: RuntimeSheet, selector: string)
 	return function(props: Props): PseudoInstance
-		return { selector = "::" .. selector, props = props }
+		return table.freeze({ selector = "::" .. selector, props = props })
 	end
 end
 
 function style_sheet_prototype.query(self: RuntimeSheet, name: string)
 	return function(conditions: Props)
-		-- A StyleQuery only activates under the instance it checks, so every GuiObject gets it as a pseudo-instance.
-		create_rule(self.instance, `GuiObject::StyleQuery`, conditions)
+		-- a StyleQuery only activates under the instance it checks, so every GuiObject gets it as a pseudo-instance
+		-- because its the easiest way to do a global style query
+		-- #{name} is what names that pseudo-instance so @{name} selectors match it
+		create_rule(self.instance, `GuiObject::StyleQuery #{name}`, conditions, name)
 		return self
 	end
 end
@@ -466,10 +456,19 @@ function style_sheet_prototype.link(self: RuntimeSheet)
 	end)
 end
 
-local function style_sheet(): Sheet<{}, {}, {}>
+local function style_sheet(name: string, parent: Instance): Sheet<{}, {}, {}>
+	local instance = Instance.new("StyleSheet")
+	instance.Name = name
+
+	-- defering parenting as to avoid datamodel change tracking whilst the style sheet is being built
+	task.defer(function(instance: Instance, parent: Instance)
+		instance.Parent = parent
+	end, instance, parent)
+
 	return table.freeze(setmetatable({
-		instance = Instance.new("StyleSheet"),
+		instance = instance,
 	}, style_sheet_prototype)) :: any
 end
 
+table.freeze(style_sheet_prototype)
 return style_sheet
