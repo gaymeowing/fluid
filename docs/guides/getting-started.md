@@ -19,6 +19,7 @@ fluid = "ffrostfall/fluid@<release>"
 # API overview
 
 - fluid.create("Frame")({ property = value })
+- fluid.hydrate(Instance.new("Frame"))({ property = value })
 - fluid.source()
 - fluid.async()
 - fluid.derive()
