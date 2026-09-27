@@ -1,4 +1,3 @@
-local style_sheet = require("@self/instances/style_sheet")
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
@@ -22,14 +21,14 @@ local show = require("@self/utils/show")
 local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
+local style_sheet = require("@self/instances/style_sheet")
 local switch = require("@self/utils/switch")
 local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
 
-export type StyleSheet<Tokens = {}, Tags = {}> = style_sheet.Sheet<Tokens, Tags>
-
+export type StyleSheet<Tokens = {}, Tags = {}, Queries = {}> = style_sheet.Sheet<Tokens, Tags, Queries>
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity

@@ -1,333 +1,408 @@
 local action = require("./action")
 local cleanup = require("../reactive/cleanup")
 local graph = require("../reactive/graph")
-local tags = require("../utils/tags")
 local instance_types = require("./types")
-
-export type Transitions = {
-	Default: TweenInfo?,
-	[string]: TweenInfo,
-}
+local tags = require("../utils/tags")
 
 type Action = action.Identity
+type Instances = instance_types.Instances
 -- Do not name anything `StyleSheet` in this file — it late-binds over Roblox's extern.
 type RobloxStyleSheet = StyleSheet
 type RobloxGuiObject = GuiObject
+type RobloxInstance = Instance
 type RobloxTweenInfo = TweenInfo
 type RobloxSignal = RBXScriptSignal
 type RobloxStyleQuery = StyleQuery
 
+type RuntimeSheet = { read instance: RobloxStyleSheet }
 
+-- `::StyleQuery` pseudo-instances take their conditions as properties, which StyleQuery doesn't declare.
+type QueryConditions = {
+	AspectRatioRange: NumberRange,
+	MaxSize: Vector2,
+	MinSize: Vector2,
+	PreferredInput: Enum.PreferredInput,
+	PreferredTextSize: Enum.PreferredTextSize,
+	ReducedMotionEnabled: boolean,
+	ViewportDisplaySize: Enum.DisplaySize,
+}
 
-type function WritableProperties(class_type: type): type
-	local properties = types.newtable()
-	local current: type? = class_type
-	local read_only_properties = table.freeze({
-		types.singleton("RobloxLocked"),
-		types.singleton("ClassName"),
-		types.singleton("UniqueId"),
-		types.singleton("Parent"),
-		types.singleton("Name"),
-	})
+-- Queries Roblox always provides, named by a condition followed by its value.
+type BuiltInQueries = {
+	PreferredInputKeyboardAndMouse: true,
+	PreferredInputGamepad: true,
+	PreferredInputTouch: true,
+	PreferredInputMicroGamepad: true,
+	ViewportDisplaySizeSmall: true,
+	ViewportDisplaySizeMedium: true,
+	ViewportDisplaySizeLarge: true,
+	PreferredTextSizeMedium: true,
+	PreferredTextSizeLarge: true,
+	PreferredTextSizeLarger: true,
+	PreferredTextSizeLargest: true,
+	ReducedMotionEnabledTrue: true,
+	ReducedMotionEnabledFalse: true,
+}
 
-	while current do
-		for property, value in current:properties() do
-			if table.find(read_only_properties, property) then
-				continue
-			end
+type Props = {
+	_transitions: { [string]: TweenInfo | string }?,
+	_queries: { [string]: Props }?,
+	_priority: number?,
+	[string | number]: PseudoInstance,
+}
 
-			local value_read = value.read
-			if not value_read or value_read.tag == "function" or value_read.tag == "intersection" then
-				continue
-			end
-			-- Studio exposes signals as externs; luau-lsp uses tables with Connect.
-			if value_read == RobloxSignal then
-				continue
-			end
-			if value_read:is("table") then
-				local connect = value_read:readproperty(types.singleton("Connect"))
-				if connect and connect:is("function") then
-					continue
-				end
-			end
-			local value_write = value.write
-			if value_write then
-				properties:setproperty(property, value_write)
-			end
-		end
+-- Made by `:pseudo`, styles a pseudo-instance from the array part of a rule.
+export type PseudoInstance = {
+	read selector: string,
+	read props: Props,
+}
 
-		current = current:readparent()
+type function VALIDATE_STRINGLETON(s: type, string_type: string): type
+	if not (s.tag == "singleton" and type(s:value()) == "string") then
+		error(`{string_type} provided is not a string singleton`, 2)
+	elseif s:value() == "" then
+		error(`{string_type} provided can't be an empty string singleton`, 2)
 	end
-
-	return properties
+	return s
 end
 
 -- Later fields override earlier fields, matching token updates.
-export type function Merge(base: type, overrides: type): type
-	local result = types.newtable()
-	for _, source in { base, overrides } do
-		if not source:is("table") then
-			continue
-		end
+type function Merge(base: type, overrides: type): type
+	local properties = {} :: { [type]: type }
+	local keys = {} :: { [string]: type }
+	local source = base
+
+	for index = 1, 2 do
 		for key, property in source:properties() do
-			result:setproperty(key, property.read)
+			local name = key:value() :: string
+			local previous = keys[name]
+
+			if previous then
+				properties[previous] = nil
+			end
+
+			properties[key] = property.read
+			keys[name] = key
 		end
-		local indexer = source:indexer()
-		if indexer then
-			result:setindexer(indexer.index, indexer.readresult)
-		end
+		source = overrides
 	end
-	return result
+
+	return types.newtable(properties, overrides:indexer() or source:indexer())
 end
 
-type function TokenRefsFor(tokens: type, property_type: type): type?
+-- Maps each token type to a union of the "$Name" refs for every token of that type.
+-- Equal types aren't the same userdata, so types are keyed by how they print.
+type function TokenRefs(tokens: type): { [string]: type }
+	local refs = {} :: { [string]: type }
 	if not tokens:is("table") then
-		return nil
+		return refs
 	end
-
-	local indexer = tokens:indexer()
-	if indexer and indexer.readresult:issubtypeof(property_type) then
-		return types.string
-	end
-
-	local refs: type? = nil
 
 	for key, property in tokens:properties() do
-		if not (key:is("singleton") and type(key:value()) == "string") then
-			continue
-		end
-
-		local name = key:value() :: string
-		-- Token table keys are bare names; rule/query values reference them as "$Name".
 		local token_type = property.read
-		if not token_type then
-			continue
+		if token_type then
+			local type_name = tostring(token_type)
+			local reference = types.singleton("$" .. (key:value() :: string))
+			local existing = refs[type_name]
+			refs[type_name] = if existing then types.unionof(existing, reference) else reference
 		end
-		if token_type:issubtypeof(property_type) then
-			local reference = types.singleton("$" .. name)
-			refs = if refs then types.unionof(refs, reference) else reference
-		end
+	end
+
+	-- Token tables with an indexer can have any name.
+	local indexer = tokens:indexer()
+	if indexer then
+		refs[tostring(indexer.readresult)] = types.string
 	end
 
 	return refs
 end
 
-type function WithTokenValues(properties: type, tokens: type): type
-	local result = types.newtable()
-
-	for key, property in properties:properties() do
-		local value_type = property.read
-		if not value_type then
-			continue
-		end
-		local token_refs = TokenRefsFor(tokens, value_type)
-		result:setproperty(
-			key,
-			types.optional(if token_refs then types.unionof(value_type, token_refs) else value_type)
-		)
-	end
-
-	return result
+type function StyleValue(value: type, refs: { [string]: type }): type
+	local value_refs = refs[tostring(value)]
+	return types.optional(if value_refs then types.unionof(value, value_refs) else value)
 end
 
-type function SubjectClassName(selector: type): type
+-- One instance type per comma separated selector: the last compound's `::` pseudo-instance, else its class.
+-- Selectors without a known class style GuiObjects.
+type function SelectorInstances(selector: type): { type }
 	if not (selector:is("singleton") and type(selector:value()) == "string") then
-		return types.singleton("")
+		return { RobloxGuiObject }
 	end
 
-	local selector_text = selector:value() :: string
-	local subject = selector_text
+	local instances = {} :: { type }
 
-	for piece in string.gmatch(selector_text, "[^>+~]+") do
-		local trimmed = string.gsub(piece, "^%s+", "")
-		trimmed = string.gsub(trimmed, "%s+$", "")
-		if trimmed ~= "" then
-			subject = trimmed
+	for part in string.gmatch(selector:value() :: string, "[^,]+") do
+		-- Only the compound after the last `>` / `>>` combinator gets styled.
+		local compound = string.match(part, "[^>]*$") :: string
+		local class_name = string.match(compound, "^%s*([%a_][%w_]*)")
+
+		for pseudo_instance in string.gmatch(compound, "::%s*([%a_][%w_]*)") do
+			class_name = pseudo_instance
+		end
+
+		local instance = if class_name then Instances:readproperty(types.singleton(class_name)) else nil
+		table.insert(instances, instance or RobloxGuiObject)
+	end
+
+	return if #instances > 0 then instances else { RobloxGuiObject }
+end
+
+-- Options are `_` prefixed so they can never collide with Roblox property names.
+type function StyleProperties(selector: type, tokens: type, queries: type): type
+	local selector_value = VALIDATE_STRINGLETON(selector, "selector"):value() :: string
+	local read_only_properties = table.freeze({
+		types.singleton("RobloxLocked"),
+		types.singleton("ClassName"),
+		types.singleton("UniqueId"),
+	})
+
+	-- Every query that `@Name` selectors and `_queries` can use: the built-ins, plus ones added with `:query`.
+	local query_keys = {} :: { [string]: type }
+	local source = BuiltInQueries
+	for i = 1, 2 do
+		for key in source:properties() do
+			query_keys[key:value() :: string] = key
+		end
+		source = queries
+	end
+
+	for name in string.gmatch(selector_value, "@([%w_%-]+)") do
+		if not query_keys[name] then
+			error(`unknown query @{name}, add it with :query()`)
 		end
 	end
 
-	local component: string? = nil
-	for name in string.gmatch(subject, "::([%w_]+)") do
-		component = name
-	end
-	if component then
-		return types.singleton(component)
-	end
+	-- Rules can't reference instances, so Parent and other instance properties are left out.
+	local instance_value = types.optional(RobloxInstance)
+	local instance_values = {} :: { [string]: boolean }
+	-- Selector lists merge properties by name, intersecting the value types they share.
+	local keys = {} :: { [string]: type }
+	local values = {} :: { [string]: type }
 
-	subject = string.gsub(subject, "::[%w_]+", "")
-	subject = string.gsub(subject, ":[%w_]+", "")
-	subject = string.gsub(subject, "@[%w_%-]+", "")
-	subject = string.gsub(subject, "%.[%w_%-]+", "")
-	subject = string.gsub(subject, "#[%w_%-]+", "")
-	subject = string.gsub(subject, "^%s+", "")
-	subject = string.gsub(subject, "%s+$", "")
-
-	return types.singleton(subject)
-end
-
-export type function TagsFrom(selector: type): type
-	local result = types.newtable()
-	if not (selector:is("singleton") and type(selector:value()) == "string") then
-		return result
-	end
-
-	local text = selector:value() :: string
-	for name in string.gmatch(text, "%.([%w_%-]+)") do
-		result:setproperty(types.singleton(name), types.singleton(true))
-	end
-	return result
-end
-
-type function PropertiesForSelector(selector: type): type
-	if not (selector:is("singleton") and type(selector:value()) == "string") then
-		return WritableProperties(RobloxGuiObject)
-	end
-
-	local text = selector:value() :: string
-	local properties = types.newtable()
-	local found = false
-
-	for part in string.gmatch(text .. ",", "([^,]+),") do
-		local trimmed = string.gsub(part, "^%s+", "")
-		trimmed = string.gsub(trimmed, "%s+$", "")
-		if trimmed == "" then
-			continue
+	local function add(property: type, value: type)
+		local name = property:value() :: string
+		local previous = values[name]
+		if not previous then
+			keys[name] = property
+			values[name] = value
+		elseif previous ~= value then
+			values[name] = types.intersectionof(previous, value)
 		end
+	end
 
-		local class_name = SubjectClassName(types.singleton(trimmed))
-		local writable = WritableProperties(Instances:readproperty(class_name) or RobloxGuiObject)
-		-- Flatten selector lists into one property table. An intersection of tables
-		-- cannot be inspected with :properties() by WithTokenValues.
-		for key, property in writable:properties() do
-			local value = property.read
-			if value then
-				local previous = properties:readproperty(key)
-				properties:setproperty(
-					key,
-					if previous and previous ~= value then types.intersectionof(previous, value) else value
-				)
+	for _, instance in SelectorInstances(selector) do
+		if instance == RobloxStyleQuery then
+			for property, condition in QueryConditions:properties() do
+				add(property, condition.read :: type)
 			end
 		end
-		found = true
+
+		local current: type? = instance
+
+		while current do
+			for property, value in current:properties() do
+				local value_write = value.write
+				local value_read = value.read
+
+				if
+					not value_read
+					or not value_write
+					or value_read.tag == "function"
+					or value_read.tag == "intersection"
+					or value_read == RobloxSignal
+					or table.find(read_only_properties, property)
+				then
+					continue
+				end
+
+				-- ignoring luau-lsp RBXScriptSignals, because luau-lsp uses table types for RBXScriptSignals
+				if value_read:is("table") then
+					local connect = value_read:readproperty(types.singleton("Connect"))
+					if connect and connect:is("function") then
+						continue
+					end
+				end
+
+				local value_name = tostring(value_write)
+				local is_instance = instance_values[value_name]
+
+				if is_instance == nil then
+					is_instance = value_write:issubtypeof(instance_value)
+					instance_values[value_name] = is_instance
+				end
+
+				if not is_instance then
+					add(property, value_write)
+				end
+			end
+
+			current = current:readparent()
+		end
 	end
 
-	return if found then properties else WritableProperties(RobloxGuiObject)
-end
+	local refs = TokenRefs(tokens)
+	local transition = StyleValue(RobloxTweenInfo, refs)
+	local transitions = {}
+	local style = {}
 
-export type function StyleProperties(selector: type, tokens: type): type
-	local instance_properties = PropertiesForSelector(selector)
-	local properties = WithTokenValues(instance_properties, tokens)
-	local query = WithTokenValues(Merge(WritableProperties(RobloxStyleQuery), instance_properties), tokens)
-	local queries = types.newtable()
-	queries:setindexer(types.string, query)
-
-	local transition = types.newtable()
-	transition:setproperty(types.singleton("Default"), types.optional(RobloxTweenInfo))
-	for key in properties:properties() do
-		transition:setproperty(key, types.optional(RobloxTweenInfo))
+	for name, key in keys do
+		style[key] = StyleValue(values[name], refs)
+		transitions[key] = transition
 	end
 
-	properties:setproperty(types.singleton("Priority"), types.optional(types.number))
-	properties:setproperty(types.singleton("Transition"), types.optional(transition))
-	properties:setproperty(types.singleton("queries"), types.optional(queries))
-	return properties
+	transitions[types.singleton("_default")] = transition
+	style[types.singleton("_priority")] = types.optional(types.number)
+	style[types.singleton("_transitions")] = types.optional(types.newtable(transitions))
+
+	-- pseudo-instances go in the array part, like instance children in the props table of fluid.bind
+	local props =
+		types.newtable(style, { index = types.number, readresult = PseudoInstance, writeresult = PseudoInstance })
+
+	-- `_queries` has a key for every query, holding the props of a nested `@Name` rule that applies while the
+	-- query is active. A nested rule takes the same props as this one, `_queries` included, so the props table
+	-- has to exist before `_queries` can point back at it.
+	local query_rule = types.optional(props)
+	local query_rules = {} :: { [type]: type }
+
+	for _, key in query_keys do
+		query_rules[key] = query_rule
+	end
+
+	props:setproperty(types.singleton("_queries"), types.optional(types.newtable(query_rules)))
+	return props
 end
 
--- Private type-only metadata carries the state accumulated by fluent calls.
-type SheetData<Tokens, Tags> = {
-	instance: RobloxStyleSheet,
-	_tokens: Tokens,
-	_tags: Tags,
+type function QueryConditionValues(tokens: type): type
+	local refs = TokenRefs(tokens)
+	local conditions = {}
+
+	for key, condition in QueryConditions:properties() do
+		conditions[key] = StyleValue(condition.read :: type, refs)
+	end
+	return types.newtable(conditions)
+end
+
+type function TagsFrom(selector: type): type
+	selector = VALIDATE_STRINGLETON(selector, "selector")
+	local true_singleton = types.singleton(true)
+	local tags = {} :: { [type]: type }
+
+	for name in string.gmatch(selector:value() :: string, "%.([%w_%-]+)") do
+		tags[types.singleton(name)] = true_singleton
+	end
+	return types.newtable(tags)
+end
+
+type function QueryFrom(name: type): type
+	name = VALIDATE_STRINGLETON(name, "query name")
+	return types.newtable({ [name] = types.singleton(true) })
+end
+
+type function PseudoSelector(selector: type): type
+	selector = VALIDATE_STRINGLETON(selector, "pseudo-instance selector")
+	return types.singleton("::" .. (selector:value() :: string))
+end
+
+type SheetData<Tokens, Tags, Queries> = {
+	read instance: RobloxStyleSheet,
+	read __I_DO_NOT_EXIST_AT_RUNTIME: {
+		read queries: Queries,
+		read tokens: Tokens,
+		read tags: Tags,
+	},
 }
 
-type TokensOf<Self> = index<Self, "_tokens">
-type TagsOf<Self> = index<Self, "_tags">
+type TypeOnly<Self> = index<Self, "__I_DO_NOT_EXIST_AT_RUNTIME">
+type TokensOf<Self> = index<TypeOnly<Self>, "tokens">
+type TagsOf<Self> = index<TypeOnly<Self>, "tags">
+type QueriesOf<Self> = index<TypeOnly<Self>, "queries">
 type TagValue<Self> = keyof<TagsOf<Self>> | () -> keyof<TagsOf<Self>>?
 
-type TokenState<Self, NewTokens> = SheetData<Merge<TokensOf<Self>, NewTokens>, TagsOf<Self>>
-type DerivedState<Self, Other> = SheetData<Merge<TokensOf<Other>, TokensOf<Self>>, Merge<TagsOf<Self>, TagsOf<Other>>>
-type RuleState<Self, Selector> = SheetData<TokensOf<Self>, Merge<TagsOf<Self>, TagsFrom<Selector>>>
+type TokenState<Self, NewTokens> = SheetData<Merge<TokensOf<Self>, NewTokens>, TagsOf<Self>, QueriesOf<Self>>
+type QueryState<Self, Name> = SheetData<TokensOf<Self>, TagsOf<Self>, Merge<QueriesOf<Self>, QueryFrom<Name>>>
+type DerivedState<Self, Other> = SheetData<
+	Merge<TokensOf<Other>, TokensOf<Self>>,
+	Merge<TagsOf<Self>, TagsOf<Other>>,
+	Merge<QueriesOf<Self>, QueriesOf<Other>>
+>
+type RuleState<Self, Selector> = SheetData<TokensOf<Self>, Merge<TagsOf<Self>, TagsFrom<Selector>>, QueriesOf<Self>>
 
--- Infer each method's state from Self, delaying property generation until the
--- receiver is known. Keep setmetatable returns inline: a recursive Sheet alias
--- here loses inference in Solver V2.
+-- string generics are unioned with "" because otherwise luau widens them to `string`,
 type SheetPrototype = {
 	__index: SheetPrototype,
 	tags: <Self>(self: Self, tags: { TagValue<Self> }) -> Action,
-	link: (self: { instance: RobloxStyleSheet }) -> Action,
+	link: (self: RuntimeSheet) -> Action,
 	tokens: <Self, NewTokens>(
 		self: Self,
 		tokens: NewTokens
 	) -> setmetatable<TokenState<Self, NewTokens>, SheetPrototype>,
+	query: <Self, Name>(
+		self: Self,
+		name: Name | ""
+	) -> (QueryConditionValues<TokensOf<Self>>) -> setmetatable<QueryState<Self, Name>, SheetPrototype>,
 	derive: <Self, Other>(self: Self, from: Other) -> setmetatable<DerivedState<Self, Other>, SheetPrototype>,
+	-- Keeps the sheet's type, it's meant for swapping between sheets with the same tokens, like themes.
+	underive: <Self>(self: Self, from: RuntimeSheet) -> Self,
+	pseudo: <Self, Selector>(
+		self: Self,
+		selector: Selector | ""
+	) -> (StyleProperties<PseudoSelector<Selector>, TokensOf<Self>, QueriesOf<Self>>) -> PseudoInstance,
 	rule: <Self, Selector>(
 		self: Self,
 		selector: Selector | ""
-	) -> (StyleProperties<Selector, TokensOf<Self>>) -> setmetatable<RuleState<Self, Selector>, SheetPrototype>,
+	) -> (
+		StyleProperties<Selector, TokensOf<Self>, QueriesOf<Self>>
+	) -> setmetatable<RuleState<Self, Selector>, SheetPrototype>,
 }
 
-export type Sheet<Tokens = {}, Tags = {}> = setmetatable<SheetData<Tokens, Tags>, SheetPrototype>
+export type Sheet<Tokens = {}, Tags = {}, Queries = {}> = setmetatable<SheetData<Tokens, Tags, Queries>, SheetPrototype>
 
-local function create_rule(style_sheet: RobloxStyleSheet, selector: string, payload: { [string]: unknown })
+local function create_rule(parent: Instance, selector: string, props: Props)
 	local rule = Instance.new("StyleRule")
 	rule.Selector = selector
 	rule.Name = selector
 
-	local properties = {} :: { [string]: unknown }
-	local queries = payload.queries :: { [string]: { [string]: unknown } }
-	local transitions = payload.Transition :: { [string]: TweenInfo }
-	local priority = payload.Priority :: number?
-
-	for key, value in payload do
-		if key == "Priority" or key == "Transition" or key == "queries" then
-			continue
-		end
-		properties[key] = value
-	end
-
+	local priority = props._priority
 	if priority then
 		rule.Priority = priority
+		props._priority = nil
 	end
-	rule:SetProperties(properties)
 
+	local transitions = props._transitions
 	if transitions then
-		local default_transition: TweenInfo? = nil
+		local default = transitions._default
 
-		for prop_name, tween_info_value in transitions do
-			if string.lower(prop_name) == "default" then
-				default_transition = tween_info_value
-				transitions[prop_name] = nil
-			end
+		if default then
+			rule:SetDefaultPropertyTransition(default)
+			transitions._default = nil
 		end
 
-		if default_transition then
-			rule:SetDefaultPropertyTransition(default_transition)
+		for property, transition in transitions do
+			rule:SetPropertyTransition(property, transition)
 		end
-		rule:SetPropertyTransitions(transitions)
 	end
 
+	local queries = props._queries
 	if queries then
-		for name, definition in queries :: { [string]: { [string]: unknown } } do
-			local query = Instance.new("StyleQuery")
-			query:SetConditions(definition)
-			query.Name = name
-			query.Parent = rule
+		for name, query_props in queries do
+			create_rule(rule, "@" .. name, query_props)
 		end
+		props._queries = nil
 	end
 
-	rule.Parent = style_sheet
-end
+	for index, pseudo in ipairs(props :: any) do
+		create_rule(rule, pseudo.selector, pseudo.props)
+	end
 
-type RuntimeSheet = { instance: RobloxStyleSheet }
+	rule:SetProperties(props)
+	rule.Parent = parent
+end
 
 local style_sheet_prototype = {}
 style_sheet_prototype.__index = style_sheet_prototype
 
-function style_sheet_prototype.rule(self: RuntimeSheet, selector: string)
-	return function(payload: { [string]: unknown })
-		create_rule(self.instance, selector, payload)
-		return self
-	end
+function style_sheet_prototype.tags(_self: RuntimeSheet, selected_tags: { string | () -> string? })
+	return tags(selected_tags)
 end
 
 function style_sheet_prototype.tokens(self: RuntimeSheet, tokens: { [string]: unknown })
@@ -339,16 +414,46 @@ function style_sheet_prototype.tokens(self: RuntimeSheet, tokens: { [string]: un
 	return self
 end
 
+function style_sheet_prototype.rule(self: RuntimeSheet, selector: string)
+	return function(props: Props)
+		create_rule(self.instance, selector, props)
+		return self
+	end
+end
+
+function style_sheet_prototype.pseudo(_self: RuntimeSheet, selector: string)
+	return function(props: Props): PseudoInstance
+		return { selector = "::" .. selector, props = props }
+	end
+end
+
+function style_sheet_prototype.query(self: RuntimeSheet, name: string)
+	return function(conditions: Props)
+		-- A StyleQuery only activates under the instance it checks, so every GuiObject gets it as a pseudo-instance.
+		create_rule(self.instance, `GuiObject::StyleQuery`, conditions)
+		return self
+	end
+end
+
 function style_sheet_prototype.derive(self: RuntimeSheet, other: RuntimeSheet)
 	local instance = self.instance
-	local derives = self.instance:GetDerives()
+	local derives = instance:GetDerives()
 	table.insert(derives, other.instance)
-	self.instance:SetDerives(next_derives)
+	instance:SetDerives(derives)
 	return self
 end
 
-function style_sheet_prototype.tags(_self: RuntimeSheet, selected_tags: { string | () -> string? })
-	return tags(selected_tags)
+function style_sheet_prototype.underive(self: RuntimeSheet, other: RuntimeSheet)
+	local instance = self.instance
+	local derives = instance:GetDerives()
+	local index = table.find(derives, other.instance)
+	local total_derives = #derives
+
+	if index then
+		derives[index], derives[total_derives] = derives[total_derives], nil
+		instance:SetDerives(derives)
+	end
+	return self
 end
 
 function style_sheet_prototype.link(self: RuntimeSheet)
@@ -361,7 +466,7 @@ function style_sheet_prototype.link(self: RuntimeSheet)
 	end)
 end
 
-local function style_sheet(): Sheet<{}, {}>
+local function style_sheet(): Sheet<{}, {}, {}>
 	return table.freeze(setmetatable({
 		instance = Instance.new("StyleSheet"),
 	}, style_sheet_prototype)) :: any
