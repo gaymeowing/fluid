@@ -46,7 +46,7 @@ type Props = {
 	_transitions: { [string]: TweenInfo | string }?,
 	_queries: { [string]: Props }?,
 	_priority: number?,
-	[string | number]: PseudoInstance,
+	[string | number]: PseudoInstance | any,
 }
 
 export type PseudoInstance = {
