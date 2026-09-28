@@ -114,10 +114,6 @@ type function StyleValue(value: type, refs: { [string]: type }): type
 end
 
 type function SelectorInstances(selector: type): { type }
-	if not (selector:is("singleton") and type(selector:value()) == "string") then
-		return { RobloxGuiObject }
-	end
-
 	local instances = {} :: { type }
 
 	for part in string.gmatch(selector:value() :: string, "[^,]+") do
@@ -329,7 +325,6 @@ type SheetPrototype = {
 		name: Name | ""
 	) -> (QueryConditionValues<TokensOf<Self>>) -> setmetatable<QueryState<Self, Name>, SheetPrototype>,
 	derive: <Self, Other>(self: Self, from: Other) -> setmetatable<DerivedState<Self, Other>, SheetPrototype>,
-	-- Keeps the sheet's type, it's meant for swapping between sheets with the same tokens, like themes.
 	underive: <Self>(self: Self, from: RuntimeSheet) -> Self,
 	pseudo: <Self, Selector>(
 		self: Self,
@@ -415,6 +410,8 @@ function style_sheet_prototype.pseudo(_self: RuntimeSheet, selector: string)
 	end
 end
 
+-- TODO: optimize this in future if this ever becomes an issue, via making global queries be applied only to rules that use them
+-- rather than just having them be a rule that applies to any GuiObject
 function style_sheet_prototype.query(self: RuntimeSheet, name: string)
 	return function(conditions: Props)
 		-- a StyleQuery only activates under the instance it checks, so every GuiObject gets it as a pseudo-instance
@@ -460,7 +457,7 @@ local function style_sheet(name: string, parent: Instance): Sheet<{}, {}, {}>
 	local instance = Instance.new("StyleSheet")
 	instance.Name = name
 
-	-- defering parenting as to avoid datamodel change tracking whilst the style sheet is being built
+	-- deferring parenting as to avoid datamodel change tracking whilst the style sheet is being built
 	task.defer(function(instance: Instance, parent: Instance)
 		instance.Parent = parent
 	end, instance, parent)
