@@ -134,6 +134,7 @@ end
 
 type function StyleProperties(selector: type, tokens: type, queries: type): type
 	local selector_value = VALIDATE_STRINGLETON(selector, "selector"):value() :: string
+	-- TODO: when luau allows use instance_types.get_read_only_properties so this table doesnt have to exist in 2 places
 	local read_only_properties = table.freeze({
 		types.singleton("RobloxLocked"),
 		types.singleton("ClassName"),
