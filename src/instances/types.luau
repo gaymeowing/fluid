@@ -1,6 +1,48 @@
 local action = require("./action")
 
-export type Instances = {
+export type function Merge(base: type, overrides: type): type
+	local properties = {} :: { [type]: type }
+	local keys = {} :: { [string]: type }
+	local source = base
+
+	for index = 1, 2 do
+		for key, property in source:properties() do
+			local name = key:value() :: string
+			local previous = keys[name]
+
+			if previous then
+				properties[previous] = nil
+			end
+
+			properties[key] = property.read
+			keys[name] = key
+		end
+		source = overrides
+	end
+
+	return types.newtable(properties, overrides:indexer() or source:indexer())
+end
+
+-- Classes Roblox allows as pseudo-instances in style sheets
+export type PseudoInstances = {
+	StyleQuery: StyleQuery,
+	UIAspectRatioConstraint: UIAspectRatioConstraint,
+	UITextSizeConstraint: UITextSizeConstraint,
+	UISizeConstraint: UISizeConstraint,
+	UITableLayout: UITableLayout,
+	UIPageLayout: UIPageLayout,
+	UIGridLayout: UIGridLayout,
+	UIListLayout: UIListLayout,
+	UIGradient: UIGradient,
+	UIFlexItem: UIFlexItem,
+	UIPadding: UIPadding,
+	UIStroke: UIStroke,
+	UICorner: UICorner,
+	UIShadow: UIShadow,
+	UIScale: UIScale,
+}
+
+export type Instances = Merge<PseudoInstances, {
 	PyramidHandleAdornment: PyramidHandleAdornment,
 	AudioChannelSplitter: AudioChannelSplitter,
 	AudioPitchShifter: AudioPitchShifter,
@@ -52,7 +94,6 @@ export type Instances = {
 	ScrollingFrame: ScrollingFrame,
 	SelectionBox: SelectionBox,
 	StyleDerive: StyleDerive,
-	StyleQuery: StyleQuery,
 	SurfaceGui: SurfaceGui,
 	StyleSheet: StyleSheet,
 	SoundGroup: SoundGroup,
@@ -64,21 +105,7 @@ export type Instances = {
 	TextButton: TextButton,
 	TextLabel: TextLabel,
 	TextBox: TextBox,
-	UIAspectRatioConstraint: UIAspectRatioConstraint,
-	UITextSizeConstraint: UITextSizeConstraint,
-	UISizeConstraint: UISizeConstraint,
 	UIDragDetector: UIDragDetector,
-	UITableLayout: UITableLayout,
-	UIPageLayout: UIPageLayout,
-	UIGridLayout: UIGridLayout,
-	UIListLayout: UIListLayout,
-	UIGradient: UIGradient,
-	UIFlexItem: UIFlexItem,
-	UIPadding: UIPadding,
-	UIStroke: UIStroke,
-	UICorner: UICorner,
-	UIShadow: UIShadow,
-	UIScale: UIScale,
 	ViewportCamera: ViewportCamera,
 	ViewportFrame: ViewportFrame,
 	VideoDisplay: VideoDisplay,
@@ -86,7 +113,7 @@ export type Instances = {
 	WireframeHandleAdornment: WireframeHandleAdornment,
 	WorldModel: WorldModel,
 	Wire: Wire,
-}
+}>
 
 type instance = Instance
 
