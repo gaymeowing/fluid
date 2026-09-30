@@ -551,7 +551,7 @@ end
 
 type function PseudoSelector(class_name: type): type
 	--stylua: ignore
-	local name = VALIDATE_STRINGLETON(class_name, "type %* is not a valid pseudo-instance class name"):value() :: string
+	local name = VALIDATE_STRINGLETON(class_name, "type %* is not a valid pseudo-instance class name string"):value() :: string
 
 	if not PseudoInstances:readproperty(class_name) then
 		error(`class '{name}' is not a valid pseudo-instance`, 0)
