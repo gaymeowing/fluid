@@ -32,7 +32,6 @@ type QueryConditions = {
 	ViewportDisplaySize: Enum.DisplaySize,
 }
 
--- Queries Roblox always provides, named by a condition followed by its value.
 local BUILTIN_QUERIES = table.freeze({
 	PreferredInputKeyboardAndMouse = true,
 	PreferredInputGamepad = true,
@@ -65,7 +64,6 @@ export type PseudoInstance<Selector = string> = {
 	read props: Props,
 }
 
--- errors with `pattern` formatted with the type if it isn't a non-empty string singleton, `%*` is where the type goes
 type function VALIDATE_STRINGLETON(s: type, pattern: string): type
 	if not (s.tag == "singleton" and type(s:value()) == "string") or s:value() == "" then
 		error(string.format(pattern, s), 0)
