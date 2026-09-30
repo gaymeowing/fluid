@@ -609,7 +609,7 @@ type SheetPrototype = {
 		name: Name | ""
 	) -> (conditions: QueryConditionsFor<TokensOf<Self>>) -> setmetatable<QueryState<Self, Name>, SheetPrototype>,
 	derive: <Self, Other>(self: Self, from: Other) -> setmetatable<DerivedState<Self, Other>, SheetPrototype>,
-	-- doesn't do any type function shennagigans because its meant to be used at runtime, for stuff like theme switching
+	-- doesn't do any type function shenanigans because its meant to be used at runtime, for stuff like theme switching
 	underive: <Self>(self: Self, from: RuntimeSheet) -> Self,
 	pseudo: <Self, ClassName>(
 		self: Self,
