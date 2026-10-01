@@ -625,16 +625,28 @@ type SheetPrototype = {
 
 export type Sheet<Tokens = {}, Tags = {}, Queries = {}> = setmetatable<SheetData<Tokens, Tags, Queries>, SheetPrototype>
 
+local function create_query(
+	parent: Instance,
+	name: string,
+	conditions: { [string]: any }
+)
+	local instance = Instance.new("StyleRule")
+	instance.Selector = `::StyleQuery #{name}`
+	instance.Name = name
+	instance:SetProperties(conditions)
+	instance.Parent = parent
+end
+
 local function create_rule(
 	parent: Instance,
 	selector: string,
 	props: Props,
 	known_queries: { [string]: true? },
-	name: string?
+	is_pseudo: boolean?
 )
 	local rule = Instance.new("StyleRule")
 	rule.Selector = selector
-	rule.Name = name or selector
+	rule.Name = selector
 
 	local priority = props._priority
 	if priority then
@@ -657,8 +669,12 @@ local function create_rule(
 	local queries = props._queries
 	if queries then
 		-- roblox gives queries under pseudo-instances a SelectorError
-		if string.find(selector, "::", 1, true) then
-			error(`rule '{selector}' cannot have queries since it ends in a pseudo-instance, move it into the query`)
+		if is_pseudo then
+			error("pseudo-instances cannot have queries")
+		elseif string.find(selector, "::", 1, true) then
+			error(
+				`rule '{selector}' cannot have queries since it ends in a pseudo-instance, create the pseudo-instance using StyleSheet:pseudo() in the properties of the rule instead`
+			)
 		end
 
 		for name, query_props in queries do
@@ -666,8 +682,7 @@ local function create_rule(
 
 			if conditions then
 				-- a StyleQuery pseudo-instance under this rule only exists on the instances this rule styles
-				create_rule(rule, `::StyleQuery #{name}`, conditions, known_queries, name)
-				query_props._conditions = nil
+				create_query(rule, name, conditions)
 			elseif not ((BUILTIN_QUERIES :: any)[name] or known_queries[name]) then
 				error(`query '{name}' does not exist, add it with :query() or set _queries.{name}._conditions`)
 			end
@@ -723,7 +738,7 @@ function style_sheet_prototype.query(self: RuntimeSheet, name: string)
 		-- because its the easiest way to do a global style query
 		-- #{name} is what names that pseudo-instance so @{name} selectors match it
 		local queries = self._queries
-		create_rule(self.instance, `GuiObject::StyleQuery #{name}`, conditions, queries, name)
+		create_query(self.instance, name, conditions)
 		queries[name] = true
 		return self
 	end
