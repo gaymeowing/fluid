@@ -463,6 +463,7 @@ type function StyleProperties(selector: type, tokens: type, queries: type): type
 	end
 
 	transitions[types.singleton("_default")] = transition
+	-- this does nothing for pseudo instances, but id rather just allow it incase roblox does have it do something in future
 	style[types.singleton("_priority")] = types.optional(types.number)
 	style[types.singleton("_transitions")] = types.optional(types.newtable(transitions))
 
