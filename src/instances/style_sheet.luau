@@ -626,12 +626,7 @@ type SheetPrototype = {
 
 export type Sheet<Tokens = {}, Tags = {}, Queries = {}> = setmetatable<SheetData<Tokens, Tags, Queries>, SheetPrototype>
 
-local function create_query(
-	parent: Instance,
-	selector: string,
-	name: string,
-	conditions: { [string]: any }
-)
+local function create_query(parent: Instance, selector: string, name: string, conditions: { [string]: any })
 	local instance = Instance.new("StyleRule")
 	instance.Selector = selector
 	instance.Name = name
