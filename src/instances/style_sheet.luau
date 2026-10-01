@@ -628,11 +628,12 @@ export type Sheet<Tokens = {}, Tags = {}, Queries = {}> = setmetatable<SheetData
 
 local function create_query(
 	parent: Instance,
+	selector: string,
 	name: string,
 	conditions: { [string]: any }
 )
 	local instance = Instance.new("StyleRule")
-	instance.Selector = `::StyleQuery #{name}`
+	instance.Selector = selector
 	instance.Name = name
 	instance:SetProperties(conditions)
 	instance.Parent = parent
@@ -683,7 +684,7 @@ local function create_rule(
 
 			if conditions then
 				-- a StyleQuery pseudo-instance under this rule only exists on the instances this rule styles
-				create_query(rule, name, conditions)
+				create_query(rule, `::StyleQuery #{name}`, name, conditions)
 			elseif not ((BUILTIN_QUERIES :: any)[name] or known_queries[name]) then
 				error(`query '{name}' does not exist, add it with :query() or set _queries.{name}._conditions`)
 			end
@@ -738,9 +739,8 @@ function style_sheet_prototype.query(self: RuntimeSheet, name: string)
 		-- a StyleQuery only activates under the instance it checks, so every GuiObject gets it as a pseudo-instance
 		-- because its the easiest way to do a global style query
 		-- #{name} is what names that pseudo-instance so @{name} selectors match it
-		local queries = self._queries
-		create_query(self.instance, name, conditions)
-		queries[name] = true
+		create_query(self.instance, `GuiObject::StyleQuery #{name}`, name, conditions)
+		self._queries[name] = true
 		return self
 	end
 end
