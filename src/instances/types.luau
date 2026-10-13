@@ -2,6 +2,7 @@ local action = require("./action")
 
 export type Instances = {
 	PyramidHandleAdornment: PyramidHandleAdornment,
+	ParticleEmitter2D: ParticleEmitter2D,
 	AudioChannelSplitter: AudioChannelSplitter,
 	AudioPitchShifter: AudioPitchShifter,
 	AudioDeviceOutput: AudioDeviceOutput,
