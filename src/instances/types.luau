@@ -205,7 +205,7 @@ export type function PropertiesFor(type_instance: type): type
 			local write_value = value.write :: type
 			local read_value = value.read :: type
 			-- doing it like this because roblox may actually make their types more accurate,
-			-- as callbacks on instances can't be read to get the callback
+			-- as callbacks on instances can't be read to get the callback, but they're typed as if they can be read
 			local value_tag = ((read_value or write_value) :: type).tag
 
 			-- TODO: special case functions when instance methods get marked as read only, as instances can have callback properties
