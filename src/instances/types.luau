@@ -3,6 +3,7 @@ local action = require("./action")
 export type Instances = {
 	PyramidHandleAdornment: PyramidHandleAdornment,
 	ParticleEmitter2D: ParticleEmitter2D,
+	ParticleEmitter: ParticleEmitter,
 	AudioChannelSplitter: AudioChannelSplitter,
 	AudioPitchShifter: AudioPitchShifter,
 	AudioDeviceOutput: AudioDeviceOutput,
@@ -80,6 +81,7 @@ export type Instances = {
 	UICorner: UICorner,
 	UIShadow: UIShadow,
 	UIScale: UIScale,
+	UIBlur: UIBlur,
 	ViewportCamera: ViewportCamera,
 	ViewportFrame: ViewportFrame,
 	VideoDisplay: VideoDisplay,
