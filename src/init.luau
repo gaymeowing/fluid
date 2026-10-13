@@ -30,7 +30,8 @@ local untrack = require("@self/reactive/untrack")
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
-export type PropertiesFor<I> = instance_types.PropertiesFor<I>
+export type PropertiesFor<T> = instance_types.PropertiesFor<T>
+export type GetInstance<T> = instance_types.GetInstance<T>
 
 local scheduler_thread: thread? = nil
 

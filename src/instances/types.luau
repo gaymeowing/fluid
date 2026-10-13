@@ -88,66 +88,29 @@ export type Instances = {
 	Wire: Wire,
 }
 
+type Action = action.Identity
+
 type instance = Instance
 
-export type function GetInstance(class_name: type, instances: type): type
-	if not class_name:is("singleton") then
-		return instance
+export type function get_instance(type_instance: type, instances: type, _instance: type): type
+	if type_instance.tag == "singleton" then
+		return instances:readproperty(type_instance) or _instance
+	-- this is here so passing PropertiesFor a type like any because of a type solver issue,
+	-- or passing it any or unknown in a prototype class will still work
+	elseif type_instance == types.unknown or type_instance == types.any then
+		return _instance
+	elseif type_instance:issubtypeof(_instance) then
+		return type_instance
 	end
 
-	return instances:readproperty(class_name) or instance
+	error(
+		`Can't convert type '{type_instance}' into an Instance type because it's not 'unknown', 'any', a ClassName string singleton, or a subtype of '{_instance}'`
+	)
 end
 
-type UnknownConnectCallback = (...any) -> ()
-
-type Signal = RBXScriptSignal
-
-type function get_connect(v: type): type?
-	local connect = v:readproperty(types.singleton("Connect"))
-
-	if connect and connect:is("function") then
-		local head = connect:parameters().head
-
-		if not head then
-			return nil
-		end
-		local callback = head[2]
-
-		if callback and callback:is("function") then
-			return callback
-		end
-	end
-
-	return nil
+export type function GetInstance(type_instance: type): type
+	return get_instance(type_instance, Instances, instance)
 end
-
-export type function is_signal(v: type): type?
-	if v == Signal and v.tag == "extern" then
-		return UnknownConnectCallback
-	-- luau lsp types RBXScriptSignals as tables
-	elseif v.tag == "table" then
-		local connect = get_connect(v)
-
-		if connect then
-			return connect
-		end
-
-		-- i cba to test if this is needed or not
-		local metatable = v:metatable()
-
-		if metatable then
-			connect = get_connect(metatable)
-
-			if connect then
-				return connect
-			end
-		end
-	end
-
-	return nil
-end
-
-type Action = action.Identity
 
 export type function get_read_only_instance_properties(): { type }
 	return table.freeze({
@@ -157,29 +120,81 @@ export type function get_read_only_instance_properties(): { type }
 	})
 end
 
-export type function PropertiesFor(object: type): type
-	-- support for fake generic constraints ie types like T & Instance
-	if object.tag == "intersection" then
-		local components = object:components()
+export type function PropertiesFor(type_instance: type): type
+	-- uses the string values of the property name instead of the type instances
+	-- as luau currently doesn't have singleton type userdatas setup to be the same if their value is the same
+	local default_properties = {} :: { [string]: type }
+	local type_tag = type_instance.tag
 
-		if #components == 2 then
-			object = components[1]
-		else
-			error("cannot provide an intersection type with more than 2 components to PropertiesFor")
+	-- dealing with intersections like this to support "generic constraints" ie T & { Name: "Head" }
+	-- and also for providing default properties to an instance ie Frame & { Name: "Divider" },
+	-- or nested default properties ie (Frame & { Name: "Divider" }) & (Frame & { Parent: ScreenGui })
+	if type_tag == "intersection" then
+		local components = type_instance:components()
+		local total_components = #components
+		local class: type?
+
+		while total_components > 0 do
+			local component = components[total_components]
+			total_components -= 1
+
+			local component_tag = component.tag
+
+			if component_tag == "intersection" then
+				for _, inner_component in component:components() do
+					total_components += 1
+					components[total_components] = inner_component
+				end
+				continue
+			elseif component_tag == "table" then
+				for property, value in component:properties() do
+					local value_type = value.write or value.read
+
+					if value_type then
+						local key = property:value() :: string
+						local default_value = default_properties[key]
+
+						default_properties[key] = if default_value
+							then types.unionof(default_value, value_type)
+							else value_type
+					end
+				end
+				continue
+			end
+
+			-- doing this to support generics in the cases of like prototype metatables
+			-- local prototype = {} :: ClassPrototype<any>
+			if component == types.any or component == types.unknown then
+				component = instance
+			elseif not component:issubtypeof(instance) then
+				--stylua: ignore
+				error(`Expected component to be a properties table or '{instance}', but got '{component}'`)
+			end
+
+			if component == instance or not class then
+				class = component
+			elseif class ~= instance then
+				-- the component's class could be any class, so we're getting their closest common ancestor as the class to get properties for
+				-- to avoid issues with properties being allowed that don't exist on the instance that is having its properties set
+				while not component:issubtypeof(class) do
+					class = class:readparent() or instance
+				end
+			end
 		end
-	end
 
-	if object.tag == "singleton" then
-		object = GetInstance(object, Instances)
-	elseif not object:issubtypeof(instance) then
-		error("Cannot get properties of a non Instance type")
+		if not class then
+			error("No class found in the intersection provided")
+		end
+		type_instance = class
+	else
+		type_instance = get_instance(type_instance, Instances, instance)
 	end
 
 	local read_only_properties = get_read_only_instance_properties()
 	local head_table = {}
 	local args_table = { head = head_table }
 	local properties = {} :: { [type]: type }
-	local current = object :: type
+	local current = type_instance :: type
 
 	while current do
 		for property, value in current:properties() do
@@ -187,21 +202,57 @@ export type function PropertiesFor(object: type): type
 				continue
 			end
 
-			local value_read = value.read :: type
-			local callback = is_signal(value_read)
+			local write_value = value.write :: type
+			local read_value = value.read :: type
+			-- doing it like this because roblox may actually make their types more accurate,
+			-- as callbacks on instances can't be read to get the callback
+			local value_tag = ((read_value or write_value) :: type).tag
 
-			if callback then
-				properties[property] = types.optional(callback)
-			elseif value_read.tag == "function" or value_read.tag == "intersection" then
+			-- TODO: special case functions when instance methods get marked as read only, as instances can have callback properties
+			-- such as RemoteFunction.OnServerInvoke
+			if value_tag == "function" or value_tag == "intersection" then
 				continue
-			elseif value.write then
-				head_table[1] = value_read
+			end
+
+			local connect: type
+
+			if value_tag == "extern" then
+				-- iterating :properties() here because as of writing doing the following doesn't work
+				-- because type userdatas aren't the same even if they have the same value and also because extern type userdatas don't have :readproperty()
+				-- connect = t:properties()[types.singleton("Connect")].read
+				for key, value in read_value:properties() do
+					if key:value() == "Connect" then
+						connect = value.read or value.write :: any
+						break
+					end
+				end
+			-- luau lsp types RBXScriptSignals as tables
+			elseif value_tag == "table" then
+				connect = read_value:readproperty(types.singleton("Connect")) :: any
+			end
+
+			local property_value: type
+
+			if connect then
+				property_value = types.optional(connect:parameters().head[2])
+			elseif write_value then
+				head_table[1] = read_value
 
 				--stylua: ignore
-				properties[property] = types.optional(
-					types.unionof(types.newfunction(nil, args_table :: any), value.write)
-				)
+				property_value = types.optional(types.unionof(types.newfunction(nil, args_table :: any), write_value))
+				local property_name = property:value() :: string
+				local default_value = default_properties[property_name]
+
+				if default_value then
+					if not default_value:issubtypeof(write_value) then
+						--stylua: ignore
+						error(`Expected default value provided for property '{property_name}' to be '{write_value}', but got '{default_value}' via one of the tables in the intersection provided`)
+					end
+					property_value = types.unionof(property_value, default_value)
+				end
 			end
+
+			properties[property] = property_value
 		end
 
 		current = current:readparent()
