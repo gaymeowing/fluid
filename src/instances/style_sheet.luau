@@ -104,6 +104,7 @@ type function parse_selector(selector: string, queries: { [string]: type }): ({ 
 	-- pseudo-instances roblox allows under each pseudo-instance; pseudo-instances missing from this list can't have any
 	local PSEUDO_INSTANCE_CHILDREN = table.freeze({
 		UIGridLayout = table.freeze({ "UIAspectRatioConstraint", "UISizeConstraint" }),
+		UIShadow = table.freeze({ "UIGradient" }),
 		UIStroke = table.freeze({ "UIGradient" }),
 	}) :: { [string]: { string } }
 
