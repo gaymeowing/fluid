@@ -40,6 +40,7 @@ export type PseudoInstances = {
 	UICorner: UICorner,
 	UIShadow: UIShadow,
 	UIScale: UIScale,
+	UIBlur: UIBlur,
 }
 
 export type Instances = Merge<PseudoInstances, {
